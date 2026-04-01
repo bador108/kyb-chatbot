@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import google.generativeai as genai
-from google.generativeai.types import Part
 
 from database import get_db, init_db, ChatSession, ChatMessage
 from auth import router as auth_router, get_current_user, User
@@ -199,7 +198,7 @@ async def send_message(
 
         if mime in IMAGE_MIME or ext in {'.png', '.jpg', '.jpeg', '.gif', '.webp'}:
             # Obrázek — pošli přímo Gemini (vision)
-            file_part = Part.from_data(data=raw, mime_type=mime or "image/png")
+            file_part = {"mime_type": mime or "image/png", "data": raw}
             file_info = f"\n\n[Nahraný obrázek: {file.filename}]"
         elif ext in TEXT_EXTENSIONS or mime.startswith("text/"):
             # Textový soubor — přidej obsah do zprávy
@@ -239,7 +238,7 @@ async def send_message(
             parts = []
             if content.strip():
                 parts.append(content)
-            parts.append(file_part)
+            parts.append({"inline_data": file_part})
             response = chat_session.send_message(parts)
         else:
             response = chat_session.send_message(user_content)
