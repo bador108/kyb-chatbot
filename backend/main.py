@@ -1,6 +1,10 @@
 import os
+import logging
+import traceback
 from pathlib import Path
 from datetime import datetime
+
+logging.basicConfig(level=logging.INFO)
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -188,6 +192,7 @@ async def send_message(
         response = chat_session.send_message(body.content)
         ai_text = response.text
     except Exception as e:
+        logging.error(f"Gemini error: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
     # Save assistant message
