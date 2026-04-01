@@ -7,7 +7,7 @@ import App from './App.jsx'
 import Login from './pages/Login.jsx'
 import './index.css'
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '341626539218-p088u1ioa01b0sbq839438houmq89ndm.apps.googleusercontent.com'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
