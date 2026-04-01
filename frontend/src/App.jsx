@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import MessageBubble from './components/MessageBubble'
 import InputArea from './components/InputArea'
@@ -25,10 +24,10 @@ Vítej! Jsem tvůj AI asistent pro CTF a kybernetickou bezpečnost.
 
 export default function App() {
   const { token } = useAuth()
-  const navigate = useNavigate()
   const [sessionId, setSessionId] = useState(null)
   const [messages, setMessages] = useState([WELCOME])
   const [isLoading, setIsLoading] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -36,6 +35,7 @@ export default function App() {
   }, [messages])
 
   const loadSession = async (id) => {
+    setSidebarOpen(false)
     setSessionId(id)
     setMessages([])
     const res = await fetch(`${API_URL}/sessions/${id}/messages`, {
@@ -48,6 +48,7 @@ export default function App() {
   }
 
   const startNewChat = () => {
+    setSidebarOpen(false)
     setSessionId(null)
     setMessages([WELCOME])
   }
@@ -55,7 +56,6 @@ export default function App() {
   const sendMessage = async (content) => {
     if (!content.trim() || isLoading) return
 
-    // Create session if none
     let sid = sessionId
     if (!sid) {
       const res = await fetch(`${API_URL}/sessions`, {
@@ -96,14 +96,25 @@ export default function App() {
 
   return (
     <div className="app-layout">
-      <HistorySidebar
-        currentSessionId={sessionId}
-        onSelectSession={loadSession}
-        onNewChat={startNewChat}
-      />
+      {/* Overlay pro zavření sidebaru na mobilu */}
+      {sidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      <div className={`sidebar-wrapper ${sidebarOpen ? 'open' : ''}`}>
+        <HistorySidebar
+          currentSessionId={sessionId}
+          onSelectSession={loadSession}
+          onNewChat={startNewChat}
+        />
+      </div>
+
       <div className="app">
         <header className="header">
           <div className="header-left">
+            <button className="hamburger" onClick={() => setSidebarOpen(o => !o)}>
+              ☰
+            </button>
             <span className="header-icon">{'>'}_</span>
             <div>
               <h1 className="header-title">CyberBot</h1>

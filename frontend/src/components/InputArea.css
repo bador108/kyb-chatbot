@@ -118,3 +118,21 @@
   margin-top: 6px;
   opacity: 0.6;
 }
+
+@media (max-width: 768px) {
+  .quick-commands {
+    display: none;
+  }
+
+  .input-area {
+    padding: 8px 8px 10px;
+  }
+
+  .input-hint {
+    display: none;
+  }
+
+  .chat-input {
+    font-size: 16px; /* zabrání zoomu na iOS */
+  }
+}

@@ -24,6 +24,7 @@ export default function InputArea({ onSend, isLoading }) {
     onSend(value.trim())
     setValue('')
     textareaRef.current.style.height = 'auto'
+    textareaRef.current.focus()
   }
 
   const handleKeyDown = (e) => {
