@@ -13,7 +13,7 @@ from starlette.requests import Request as StarletteRequest
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from dotenv import load_dotenv
-import google.generativeai as genai
+from groq import Groq
 
 from database import get_db, init_db, ChatSession, ChatMessage
 from auth import router as auth_router, get_current_user, User
@@ -42,7 +42,7 @@ app.include_router(auth_router)
 
 init_db()
 
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+groq_client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
 KNOWLEDGE_DIR = Path(__file__).parent / "knowledge"
 
@@ -86,10 +86,7 @@ Pokud uživatel pošle výstup příkazu, analyzuj ho a vysvětli co znamená a 
 Vždy navrhni konkrétní příkazy a techniky relevantní pro situaci.
 """
 
-model = genai.GenerativeModel(
-    model_name="gemini-2.0-flash",
-    system_instruction=SYSTEM_PROMPT,
-)
+GROQ_MODEL = "llama-3.3-70b-versatile"
 
 
 # ── Session endpoints ────────────────────────────────────────────────────────
@@ -211,7 +208,7 @@ async def send_message(
         mime = file.content_type or ""
 
         if mime in IMAGE_MIME or ext in {'.png', '.jpg', '.jpeg', '.gif', '.webp'}:
-            # Obrázek — pošli přímo Gemini (vision)
+            # Obrázek — vlož jako base64 text (Groq nepodporuje vision na free tier)
             file_part = {"mime_type": mime or "image/png", "data": raw}
             file_info = f"\n\n[Nahraný obrázek: {file.filename}]"
         elif ext in TEXT_EXTENSIONS or mime.startswith("text/"):
@@ -240,26 +237,25 @@ async def send_message(
     db.add(user_msg)
     db.commit()
 
-    # Sestav historii pro Gemini
-    history = []
+    # Sestav historii pro Groq
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     for m in session.messages[:-1]:
-        history.append({"role": "user" if m.role == "user" else "model", "parts": [m.content]})
+        messages.append({"role": "user" if m.role == "user" else "assistant", "content": m.content})
 
-    # Zavolej Gemini
+    # Přidej aktuální zprávu (s případným obrázkem jako textem)
+    messages.append({"role": "user", "content": user_content})
+
+    # Zavolej Groq
     try:
-        chat_session = model.start_chat(history=history)
-        if file_part:
-            parts = []
-            if content.strip():
-                parts.append(content)
-            parts.append({"inline_data": file_part})
-            response = chat_session.send_message(parts)
-        else:
-            response = chat_session.send_message(user_content)
-        ai_text = response.text
+        response = groq_client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=messages,
+            max_tokens=4096,
+        )
+        ai_text = response.choices[0].message.content
     except Exception as e:
-        logging.error(f"Gemini error: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Gemini API error: {type(e).__name__}: {str(e)}")
+        logging.error(f"Groq error: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Groq API error: {type(e).__name__}: {str(e)}")
 
     # Ulož odpověď
     ai_msg = ChatMessage(session_id=session_id, role="assistant", content=ai_text)
