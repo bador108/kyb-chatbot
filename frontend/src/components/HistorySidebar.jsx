@@ -44,29 +44,34 @@ export default function HistorySidebar({ currentSessionId, onSelectSession, onNe
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <span className="sidebar-logo">CyberBot</span>
+        <div className="sidebar-logo">
+          <div className="sidebar-logo-icon">🛡️</div>
+          CyberBot
+        </div>
         <button className="new-chat-btn" onClick={onNewChat} title="Nový chat">+</button>
       </div>
 
       <div className="sessions-list">
         {sessions.length === 0 && (
-          <p className="no-sessions">Zatím žádné chaty</p>
+          <p className="no-sessions">Zatím žádné chaty.<br/>Začni nový dotaz!</p>
         )}
+        {sessions.length > 0 && <div className="sessions-section-label">Nedávné</div>}
         {sessions.map(s => (
           <div
             key={s.id}
             className={`session-item ${s.id === currentSessionId ? 'active' : ''}`}
             onClick={() => onSelectSession(s.id)}
           >
-            <span className="session-title">{s.title}</span>
-            <div className="session-meta">
+            <span className="session-icon">💬</span>
+            <div className="session-content">
+              <span className="session-title">{s.title}</span>
               <span className="session-date">{formatDate(s.updated_at)}</span>
-              <button
-                className="delete-session-btn"
-                onClick={(e) => deleteSession(e, s.id)}
-                title="Smazat"
-              >×</button>
             </div>
+            <button
+              className="delete-session-btn"
+              onClick={(e) => deleteSession(e, s.id)}
+              title="Smazat"
+            >×</button>
           </div>
         ))}
       </div>

@@ -37,26 +37,26 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <div className="login-icon">{'>'}_</div>
-        <h1 className="login-title">CyberBot</h1>
-        <p className="login-subtitle">CTF & Kybernetická bezpečnost</p>
+        <div className="login-logo">🛡️</div>
+        <h1 className="login-title">Cyber<span>Bot</span></h1>
+        <p className="login-subtitle">Tvůj AI asistent pro CTF a kybernetickou bezpečnost</p>
 
         <div className="login-features">
           <div className="feature">
-            <span className="feature-icon">⬡</span>
+            <span className="feature-icon">🔍</span>
             <span>Analýza nmap, gobuster výstupů</span>
           </div>
           <div className="feature">
-            <span className="feature-icon">⬡</span>
+            <span className="feature-icon">⚡</span>
             <span>Privilege escalation techniky</span>
           </div>
           <div className="feature">
-            <span className="feature-icon">⬡</span>
+            <span className="feature-icon">🐚</span>
             <span>Reverse shell & CTF metodologie</span>
           </div>
           <div className="feature">
-            <span className="feature-icon">⬡</span>
-            <span>Historie chatu uložena k účtu</span>
+            <span className="feature-icon">📎</span>
+            <span>Nahrávání souborů a obrázků</span>
           </div>
         </div>
 

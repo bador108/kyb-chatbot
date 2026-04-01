@@ -6,23 +6,26 @@
 }
 
 :root {
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --bg-tertiary: #21262d;
-  --border: #30363d;
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-  --accent: #00ff41;
-  --accent-dim: #00cc33;
-  --accent-glow: rgba(0, 255, 65, 0.15);
-  --user-bubble: #1f3a2a;
-  --bot-bubble: #161b22;
-  --danger: #f85149;
-  --warning: #d29922;
-  --info: #388bfd;
-  --font-mono: 'Courier New', 'Consolas', monospace;
+  --bg: #0f1117;
+  --bg-2: #16181f;
+  --bg-3: #1e2029;
+  --bg-4: #252831;
+  --border: rgba(255,255,255,0.08);
+  --border-2: rgba(255,255,255,0.12);
+  --text: #f0f2f5;
+  --text-2: #9da3b0;
+  --text-3: #5c6272;
+  --accent: #7c6af7;
+  --accent-2: #9d8fff;
+  --accent-glow: rgba(124, 106, 247, 0.2);
+  --user-bg: #2a1f5e;
+  --user-border: rgba(124, 106, 247, 0.3);
+  --bot-bg: #16181f;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --radius: 16px;
+  --radius-sm: 8px;
 
-  /* Safe areas pro iPhone notch / home bar */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
@@ -36,17 +39,16 @@ html {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
   line-height: 1.6;
   overflow: hidden;
-  /* Výška pro Safari — bez adresního řádku */
   height: -webkit-fill-available;
   height: 100%;
-  /* Zabrání bounce scrollu na iOS */
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
+  font-size: 15px;
 }
 
 #root {
@@ -55,13 +57,6 @@ body {
   overflow: hidden;
 }
 
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
-}
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 4px; }

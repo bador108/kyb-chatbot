@@ -10,7 +10,7 @@ export default function MessageBubble({ message }) {
   return (
     <div className={`message-wrapper ${isUser ? 'user' : 'bot'}`}>
       <div className="message-avatar">
-        {isUser ? '>' : '$'}
+        {isUser ? '👤' : '🛡️'}
       </div>
       <div className={`message-bubble ${isUser ? 'user' : 'bot'}`}>
         {isUser ? (

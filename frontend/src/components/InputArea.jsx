@@ -72,36 +72,37 @@ export default function InputArea({ onSend, isLoading }) {
         </div>
       )}
 
-      <div className="input-row">
-        <span className="prompt-symbol">$</span>
+      <div className="input-box">
         <textarea
           ref={textareaRef}
           className="chat-input"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={file ? 'Přidej komentář k souboru (nebo odešli přímo)...' : 'Napiš dotaz nebo vlož výstup příkazu...'}
+          placeholder={file ? 'Přidej komentář k souboru...' : 'Napiš dotaz nebo vlož výstup příkazu...'}
           rows={1}
           disabled={isLoading}
         />
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".txt,.log,.md,.py,.js,.php,.sh,.c,.cpp,.h,.json,.xml,.html,.csv,.conf,.cfg,.ini,.env,.sql,.png,.jpg,.jpeg,.gif,.webp,text/*"
-          onChange={handleFileChange}
-          style={{ display: 'none' }}
-          id="file-upload"
-        />
-        <label htmlFor="file-upload" className={`upload-btn ${isLoading ? 'disabled' : ''}`} title="Nahrát soubor">
-          📎
-        </label>
-        <button
-          className="send-btn"
-          onClick={handleSubmit}
-          disabled={(!value.trim() && !file) || isLoading}
-        >
-          {isLoading ? '...' : '▶'}
-        </button>
+        <div className="input-actions">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".txt,.log,.md,.py,.js,.php,.sh,.c,.cpp,.h,.json,.xml,.html,.csv,.conf,.cfg,.ini,.env,.sql,.png,.jpg,.jpeg,.gif,.webp,text/*"
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+            id="file-upload"
+          />
+          <label htmlFor="file-upload" className={`upload-btn ${isLoading ? 'disabled' : ''}`} title="Nahrát soubor">
+            📎
+          </label>
+          <button
+            className="send-btn"
+            onClick={handleSubmit}
+            disabled={(!value.trim() && !file) || isLoading}
+          >
+            {isLoading ? '⋯' : '↑'}
+          </button>
+        </div>
       </div>
       <p className="input-hint">
         Určeno pro legální CTF · podporuje text, logy, obrázky (max 10 MB)

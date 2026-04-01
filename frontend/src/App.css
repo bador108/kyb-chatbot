@@ -1,23 +1,21 @@
 .app-layout {
   display: flex;
   height: 100vh;
-  height: 100dvh; /* Dynamic viewport height — Safari fix */
+  height: 100dvh;
   height: -webkit-fill-available;
   overflow: hidden;
   position: relative;
+  background: var(--bg);
 }
 
-/* Sidebar wrapper */
 .sidebar-wrapper {
   flex-shrink: 0;
-  width: 260px;
+  width: 280px;
   height: 100%;
   z-index: 100;
 }
 
-.sidebar-overlay {
-  display: none;
-}
+.sidebar-overlay { display: none; }
 
 .app {
   display: flex;
@@ -25,7 +23,6 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  /* Bezpečné oblasti vlevo/vpravo */
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
 }
@@ -35,63 +32,61 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  padding-top: calc(10px + var(--safe-top));
-  background: var(--bg-secondary);
+  padding: 14px 20px;
+  padding-top: calc(14px + var(--safe-top));
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  min-height: 52px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .hamburger {
   display: none;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 1.2rem;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 1rem;
   cursor: pointer;
-  padding: 6px 8px;
-  border-radius: 6px;
-  line-height: 1;
-  /* Minimální touch target 44px pro iOS */
-  min-width: 44px;
-  min-height: 44px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  min-width: 36px;
+  min-height: 36px;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s;
 }
 
-.hamburger:hover {
-  color: var(--accent);
-}
+.hamburger:hover { color: var(--text); border-color: var(--border-2); }
 
-.header-icon {
-  font-family: var(--font-mono);
-  font-size: 1.2rem;
-  color: var(--accent);
-  text-shadow: 0 0 10px var(--accent);
-  animation: blink 1.2s step-end infinite;
-}
-
-@keyframes blink {
-  50% { opacity: 0; }
+.header-logo {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--accent), #a78bfa);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .header-title {
   font-size: 1rem;
-  font-weight: 700;
-  color: var(--accent);
-  letter-spacing: 1px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
 }
 
 .header-subtitle {
-  font-size: 0.68rem;
-  color: var(--text-secondary);
+  font-size: 0.72rem;
+  color: var(--text-3);
   margin-top: 1px;
 }
 
@@ -101,12 +96,21 @@
   gap: 8px;
 }
 
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 20px;
+  padding: 4px 10px;
+}
+
 .status-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 6px var(--accent);
+  background: var(--success);
   animation: pulse 2s infinite;
 }
 
@@ -116,8 +120,9 @@
 }
 
 .status-text {
-  font-size: 0.75rem;
-  color: var(--accent);
+  font-size: 0.72rem;
+  color: var(--success);
+  font-weight: 500;
 }
 
 /* Messages */
@@ -125,26 +130,26 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 12px 10px;
+  padding: 24px 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  /* Plynulý scroll na iOS */
+  gap: 4px;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
 }
 
-/* Typing indicator */
+/* Typing */
 .typing-indicator {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 14px;
-  background: var(--bot-bubble);
+  padding: 14px 16px;
+  background: var(--bot-bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  border-top-left-radius: 2px;
-  max-width: 160px;
+  border-radius: var(--radius);
+  border-top-left-radius: 4px;
+  max-width: 120px;
+  margin-left: 44px;
 }
 
 .typing-dot {
@@ -152,65 +157,45 @@
   height: 6px;
   border-radius: 50%;
   background: var(--accent);
-  animation: typing-bounce 1.2s infinite;
+  animation: bounce 1.2s infinite;
 }
 
-.typing-dot:nth-child(2) { animation-delay: 0.2s; }
-.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+.typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.typing-dot:nth-child(3) { animation-delay: 0.3s; }
 
-@keyframes typing-bounce {
+@keyframes bounce {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-  30% { transform: translateY(-4px); opacity: 1; }
+  30% { transform: translateY(-5px); opacity: 1; }
 }
 
-.typing-text {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-}
-
-/* ── MOBILNÍ VERZE ── */
+/* Mobile */
 @media (max-width: 768px) {
-  .hamburger {
-    display: flex;
-  }
+  .hamburger { display: flex; }
 
-  .header-icon {
-    display: none;
-  }
-
-  /* Sidebar jako drawer */
   .sidebar-wrapper {
     position: fixed;
-    left: -260px;
+    left: -280px;
     top: 0;
     bottom: 0;
-    transition: left 0.25s ease;
-    box-shadow: none;
+    transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .sidebar-wrapper.open {
     left: 0;
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.6);
+    box-shadow: 8px 0 32px rgba(0,0,0,0.5);
   }
 
-  /* Tmavý overlay za sidebarem */
   .sidebar-overlay {
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0,0,0,0.6);
     z-index: 99;
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
   }
 
-  .messages-container {
-    padding: 8px 6px;
-  }
-
-  .header {
-    padding: 8px 12px;
-    padding-top: calc(8px + var(--safe-top));
-  }
+  .messages-container { padding: 16px 10px; }
+  .header { padding: 10px 14px; padding-top: calc(10px + var(--safe-top)); }
+  .status-badge { display: none; }
 }

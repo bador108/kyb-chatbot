@@ -119,18 +119,18 @@ export default function App() {
       <div className="app">
         <header className="header">
           <div className="header-left">
-            <button className="hamburger" onClick={() => setSidebarOpen(o => !o)}>
-              ☰
-            </button>
-            <span className="header-icon">{'>'}_</span>
+            <button className="hamburger" onClick={() => setSidebarOpen(o => !o)}>☰</button>
+            <div className="header-logo">🛡️</div>
             <div>
               <h1 className="header-title">CyberBot</h1>
               <p className="header-subtitle">CTF & Kybernetická bezpečnost</p>
             </div>
           </div>
           <div className="header-right">
-            <span className="status-dot" />
-            <span className="status-text">Online</span>
+            <div className="status-badge">
+              <span className="status-dot" />
+              <span className="status-text">Online</span>
+            </div>
           </div>
         </header>
 
