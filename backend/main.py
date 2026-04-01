@@ -8,6 +8,8 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO)
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -26,6 +28,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class COOPMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: StarletteRequest, call_next):
+        response = await call_next(request)
+        response.headers["Cross-Origin-Opener-Policy"] = "unsafe-none"
+        return response
+
+app.add_middleware(COOPMiddleware)
 
 app.include_router(auth_router)
 
@@ -76,7 +87,7 @@ Vždy navrhni konkrétní příkazy a techniky relevantní pro situaci.
 """
 
 model = genai.GenerativeModel(
-    model_name="gemini-2.5-flash",
+    model_name="gemini-2.0-flash",
     system_instruction=SYSTEM_PROMPT,
 )
 
@@ -248,7 +259,7 @@ async def send_message(
         ai_text = response.text
     except Exception as e:
         logging.error(f"Gemini error: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Gemini API error: {type(e).__name__}: {str(e)}")
 
     # Ulož odpověď
     ai_msg = ChatMessage(session_id=session_id, role="assistant", content=ai_text)
