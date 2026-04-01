@@ -1,7 +1,9 @@
 .input-area {
   border-top: 1px solid var(--border);
   background: var(--bg-secondary);
-  padding: 10px 12px 12px;
+  padding: 10px 12px;
+  /* Home bar na iPhone */
+  padding-bottom: calc(10px + var(--safe-bottom));
   flex-shrink: 0;
 }
 
@@ -18,10 +20,12 @@
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 0.72rem;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
+  /* Min touch target */
+  min-height: 32px;
 }
 
 .quick-cmd-btn:hover:not(:disabled) {
@@ -41,7 +45,7 @@
   gap: 8px;
   background: var(--bg-primary);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 8px 10px;
   transition: border-color 0.2s;
 }
@@ -57,6 +61,7 @@
   color: var(--accent);
   flex-shrink: 0;
   padding-bottom: 2px;
+  user-select: none;
 }
 
 .chat-input {
@@ -65,18 +70,20 @@
   border: none;
   outline: none;
   color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 0.88rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 16px; /* 16px zabrání zoomu na iOS */
   resize: none;
   line-height: 1.5;
-  max-height: 180px;
+  max-height: 140px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Zabrání Safari zoom */
+  -webkit-text-size-adjust: 100%;
 }
 
 .chat-input::placeholder {
   color: var(--text-secondary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 0.82rem;
+  font-size: 14px;
 }
 
 .chat-input:disabled {
@@ -88,21 +95,28 @@
   border: none;
   color: #000;
   font-weight: 700;
-  font-size: 0.85rem;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  font-size: 0.9rem;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
   cursor: pointer;
   flex-shrink: 0;
   transition: all 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Min touch target iOS */
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .send-btn:hover:not(:disabled) {
   background: #00ff80;
   box-shadow: 0 0 10px var(--accent);
+}
+
+.send-btn:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
 .send-btn:disabled {
@@ -112,27 +126,34 @@
 }
 
 .input-hint {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   color: var(--text-secondary);
   text-align: center;
   margin-top: 6px;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
+/* ── MOBILNÍ ── */
 @media (max-width: 768px) {
   .quick-commands {
     display: none;
   }
 
   .input-area {
-    padding: 8px 8px 10px;
+    padding: 8px 10px;
+    padding-bottom: calc(8px + var(--safe-bottom));
   }
 
   .input-hint {
     display: none;
   }
 
-  .chat-input {
-    font-size: 16px; /* zabrání zoomu na iOS */
+  .input-row {
+    border-radius: 14px;
+    padding: 6px 10px;
+  }
+
+  .prompt-symbol {
+    display: none;
   }
 }

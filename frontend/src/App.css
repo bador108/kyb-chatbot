@@ -1,15 +1,17 @@
 .app-layout {
   display: flex;
   height: 100vh;
+  height: 100dvh; /* Dynamic viewport height — Safari fix */
+  height: -webkit-fill-available;
   overflow: hidden;
   position: relative;
 }
 
-/* Sidebar wrapper — na desktopu vždy viditelný, na mobilu overlay */
+/* Sidebar wrapper */
 .sidebar-wrapper {
   flex-shrink: 0;
   width: 260px;
-  height: 100vh;
+  height: 100%;
   z-index: 100;
 }
 
@@ -23,6 +25,9 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  /* Bezpečné oblasti vlevo/vpravo */
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 
 /* Header */
@@ -31,9 +36,11 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
+  padding-top: calc(10px + var(--safe-top));
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  min-height: 52px;
 }
 
 .header-left {
@@ -49,9 +56,14 @@
   color: var(--text-secondary);
   font-size: 1.2rem;
   cursor: pointer;
-  padding: 4px 6px;
+  padding: 6px 8px;
   border-radius: 6px;
   line-height: 1;
+  /* Minimální touch target 44px pro iOS */
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
 }
 
 .hamburger:hover {
@@ -112,10 +124,14 @@
 .messages-container {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 12px 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* Plynulý scroll na iOS */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 /* Typing indicator */
@@ -163,23 +179,30 @@
     display: none;
   }
 
+  /* Sidebar jako drawer */
   .sidebar-wrapper {
     position: fixed;
     left: -260px;
     top: 0;
+    bottom: 0;
     transition: left 0.25s ease;
+    box-shadow: none;
   }
 
   .sidebar-wrapper.open {
     left: 0;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.6);
   }
 
+  /* Tmavý overlay za sidebarem */
   .sidebar-overlay {
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6);
     z-index: 99;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
   }
 
   .messages-container {
@@ -188,5 +211,6 @@
 
   .header {
     padding: 8px 12px;
+    padding-top: calc(8px + var(--safe-top));
   }
 }
