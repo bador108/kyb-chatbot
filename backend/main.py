@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from groq import Groq
+import random
 
 from database import get_db, init_db, ChatSession, ChatMessage
 from auth import router as auth_router, get_current_user, User
@@ -42,7 +43,18 @@ app.include_router(auth_router)
 
 init_db()
 
-groq_client = Groq(api_key=os.environ["GROQ_API_KEY"])
+# Načti všechny dostupné Groq API klíče (GROQ_API_KEY, GROQ_API_KEY_2, GROQ_API_KEY_3, ...)
+_groq_keys = [os.environ["GROQ_API_KEY"]]
+for _i in range(2, 20):
+    _k = os.environ.get(f"GROQ_API_KEY_{_i}")
+    if _k:
+        _groq_keys.append(_k)
+    else:
+        break
+logging.info(f"Načteno {len(_groq_keys)} Groq API klíčů")
+
+def get_groq_client() -> Groq:
+    return Groq(api_key=random.choice(_groq_keys))
 
 KNOWLEDGE_DIR = Path(__file__).parent / "knowledge"
 
@@ -247,7 +259,7 @@ async def send_message(
 
     # Zavolej Groq
     try:
-        response = groq_client.chat.completions.create(
+        response = get_groq_client().chat.completions.create(
             model=GROQ_MODEL,
             messages=messages,
             max_tokens=4096,
