@@ -53,15 +53,16 @@ export default function App() {
     setMessages([WELCOME])
   }
 
-  const sendMessage = async (content) => {
-    if (!content.trim() || isLoading) return
+  const sendMessage = async (content, file) => {
+    if (!content.trim() && !file) return
+    if (isLoading) return
 
     let sid = sessionId
     if (!sid) {
       const res = await fetch(`${API_URL}/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ title: content.slice(0, 50) }),
+        body: JSON.stringify({ title: (content || file?.name || 'Nový chat').slice(0, 50) }),
       })
       if (!res.ok) return
       const data = await res.json()
@@ -69,17 +70,23 @@ export default function App() {
       setSessionId(sid)
     }
 
+    // Zobraz zprávu uživatele
+    const displayContent = content + (file ? `\n\n📎 *${file.name}*` : '')
     setMessages(prev => {
       const filtered = prev.filter(m => m !== WELCOME)
-      return [...filtered, { role: 'user', content }]
+      return [...filtered, { role: 'user', content: displayContent }]
     })
     setIsLoading(true)
 
     try {
+      const formData = new FormData()
+      formData.append('content', content)
+      if (file) formData.append('file', file)
+
       const res = await fetch(`${API_URL}/sessions/${sid}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ content }),
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()

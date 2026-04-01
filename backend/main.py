@@ -1,16 +1,18 @@
 import os
 import logging
 import traceback
+import base64
 from pathlib import Path
 from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import google.generativeai as genai
+from google.generativeai.types import Part
 
 from database import get_db, init_db, ChatSession, ChatMessage
 from auth import router as auth_router, get_current_user, User
@@ -162,10 +164,18 @@ def get_messages(
     ]
 
 
+TEXT_EXTENSIONS = {'.txt', '.log', '.md', '.py', '.js', '.ts', '.php', '.sh', '.c', '.cpp',
+                   '.h', '.java', '.go', '.rs', '.rb', '.yaml', '.yml', '.json', '.xml',
+                   '.html', '.css', '.conf', '.cfg', '.ini', '.env', '.sql', '.csv', ''}
+IMAGE_MIME = {'image/png', 'image/jpeg', 'image/gif', 'image/webp'}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
 @app.post("/sessions/{session_id}/messages")
 async def send_message(
     session_id: str,
-    body: MessageRequest,
+    content: str = Form(""),
+    file: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -176,32 +186,75 @@ async def send_message(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # Save user message
-    user_msg = ChatMessage(session_id=session_id, role="user", content=body.content)
+    # Zpracování souboru
+    file_part = None
+    file_info = ""
+    if file and file.filename:
+        raw = await file.read()
+        if len(raw) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail="Soubor je příliš velký (max 10 MB)")
+
+        ext = Path(file.filename).suffix.lower()
+        mime = file.content_type or ""
+
+        if mime in IMAGE_MIME or ext in {'.png', '.jpg', '.jpeg', '.gif', '.webp'}:
+            # Obrázek — pošli přímo Gemini (vision)
+            file_part = Part.from_data(data=raw, mime_type=mime or "image/png")
+            file_info = f"\n\n[Nahraný obrázek: {file.filename}]"
+        elif ext in TEXT_EXTENSIONS or mime.startswith("text/"):
+            # Textový soubor — přidej obsah do zprávy
+            try:
+                text_content = raw.decode("utf-8", errors="replace")
+                file_info = f"\n\n[Soubor: {file.filename}]\n```\n{text_content[:8000]}\n```"
+                if len(text_content) > 8000:
+                    file_info += f"\n*(zkráceno, soubor má {len(text_content)} znaků)*"
+            except Exception:
+                raise HTTPException(status_code=400, detail="Nepodařilo se přečíst soubor")
+        else:
+            # Pokus o čtení jako text
+            try:
+                text_content = raw.decode("utf-8", errors="replace")
+                file_info = f"\n\n[Soubor: {file.filename}]\n```\n{text_content[:8000]}\n```"
+            except Exception:
+                raise HTTPException(status_code=400, detail="Nepodporovaný typ souboru")
+
+    user_content = content + file_info
+    if not user_content.strip():
+        raise HTTPException(status_code=400, detail="Prázdná zpráva")
+
+    # Ulož zprávu uživatele
+    user_msg = ChatMessage(session_id=session_id, role="user", content=user_content)
     db.add(user_msg)
     db.commit()
 
-    # Build history for Gemini
+    # Sestav historii pro Gemini
     history = []
-    for m in session.messages[:-1]:  # exclude the message we just added
+    for m in session.messages[:-1]:
         history.append({"role": "user" if m.role == "user" else "model", "parts": [m.content]})
 
-    # Get AI response
+    # Zavolej Gemini
     try:
         chat_session = model.start_chat(history=history)
-        response = chat_session.send_message(body.content)
+        if file_part:
+            parts = []
+            if content.strip():
+                parts.append(content)
+            parts.append(file_part)
+            response = chat_session.send_message(parts)
+        else:
+            response = chat_session.send_message(user_content)
         ai_text = response.text
     except Exception as e:
         logging.error(f"Gemini error: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
-    # Save assistant message
+    # Ulož odpověď
     ai_msg = ChatMessage(session_id=session_id, role="assistant", content=ai_text)
     db.add(ai_msg)
 
-    # Update session title from first message
     if session.title == "Nový chat" and len(session.messages) <= 2:
-        session.title = body.content[:50] + ("..." if len(body.content) > 50 else "")
+        title_text = content or file.filename if file else "Nový chat"
+        session.title = title_text[:50] + ("..." if len(title_text) > 50 else "")
 
     session.updated_at = datetime.utcnow()
     db.commit()
