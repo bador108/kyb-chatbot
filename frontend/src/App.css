@@ -1,11 +1,15 @@
+.app-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
 .app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  max-width: 900px;
-  margin: 0 auto;
-  border-left: 1px solid var(--border);
-  border-right: 1px solid var(--border);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* Header */
@@ -73,23 +77,6 @@
 .status-text {
   font-size: 0.78rem;
   color: var(--accent);
-}
-
-.clear-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-left: 8px;
-}
-
-.clear-btn:hover {
-  border-color: var(--danger);
-  color: var(--danger);
 }
 
 /* Messages */

@@ -1,34 +1,33 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from './context/AuthContext'
 import MessageBubble from './components/MessageBubble'
 import InputArea from './components/InputArea'
+import HistorySidebar from './components/HistorySidebar'
 import './App.css'
 
-const API_URL = import.meta.env.VITE_API_URL || ''
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
 
-const WELCOME_MESSAGE = {
+const WELCOME = {
   role: 'assistant',
-  content: `# CyberBot - CTF & Kybernetická bezpečnost
+  content: `# CyberBot — CTF & Kybernetická bezpečnost
 
-Vítej! Jsem tvůj AI asistent specializovaný na CTF soutěže a kybernetickou bezpečnost.
+Vítej! Jsem tvůj AI asistent pro CTF a kybernetickou bezpečnost.
 
 **Co umím:**
 - Analyzovat výstupy nástrojů (nmap, gobuster, netcat...)
 - Pomoci s privilege escalation
 - Vysvětlit reverse shell techniky
 - Poradit s CTF metodologií
-- Odpovídat na otázky o kybernetické bezpečnosti
 
-**Příklady dotazů:**
-- *Pošli mi výstup nmap a analyzuji ho*
-- *Jak eskaluji práva na Linuxu?*
-- *Jaké gobuster příkazy použít na web?*
-- *Jak stabilizovat reverse shell?*
-
-> Pomáhám výhradně s legálními cvičnými prostředími (TryHackMe, HackTheBox, CTF).`
+> Pomáhám výhradně s legálními cvičnými prostředími.`
 }
 
 export default function App() {
-  const [messages, setMessages] = useState([WELCOME_MESSAGE])
+  const { token } = useAuth()
+  const navigate = useNavigate()
+  const [sessionId, setSessionId] = useState(null)
+  const [messages, setMessages] = useState([WELCOME])
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef(null)
 
@@ -36,82 +35,104 @@ export default function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  const loadSession = async (id) => {
+    setSessionId(id)
+    setMessages([])
+    const res = await fetch(`${API_URL}/sessions/${id}/messages`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setMessages(data.length > 0 ? data : [WELCOME])
+    }
+  }
+
+  const startNewChat = () => {
+    setSessionId(null)
+    setMessages([WELCOME])
+  }
+
   const sendMessage = async (content) => {
     if (!content.trim() || isLoading) return
 
-    const userMessage = { role: 'user', content }
-    const newMessages = [...messages.filter(m => m !== WELCOME_MESSAGE || messages.length > 1), userMessage]
+    // Create session if none
+    let sid = sessionId
+    if (!sid) {
+      const res = await fetch(`${API_URL}/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title: content.slice(0, 50) }),
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      sid = data.id
+      setSessionId(sid)
+    }
 
-    // Keep welcome only if it's the only message, otherwise drop it from API call
-    const apiMessages = messages
-      .filter(m => m !== WELCOME_MESSAGE)
-      .concat(userMessage)
-
-    setMessages(prev => [...prev, userMessage])
+    setMessages(prev => {
+      const filtered = prev.filter(m => m !== WELCOME)
+      return [...filtered, { role: 'user', content }]
+    })
     setIsLoading(true)
 
     try {
-      const response = await fetch(`${API_URL}/chat`, {
+      const res = await fetch(`${API_URL}/sessions/${sid}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: apiMessages }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ content }),
       })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
-      }
-
-      const data = await response.json()
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
       setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
     } catch (err) {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `**Chyba připojení k API:** ${err.message}\n\nZkontroluj že backend běží a proměnná \`VITE_API_URL\` je správně nastavena.`
+        content: `**Chyba:** ${err.message}`,
       }])
     } finally {
       setIsLoading(false)
     }
   }
 
-  const clearChat = () => {
-    setMessages([WELCOME_MESSAGE])
-  }
-
   return (
-    <div className="app">
-      <header className="header">
-        <div className="header-left">
-          <span className="header-icon">{'>'}_</span>
-          <div>
-            <h1 className="header-title">CyberBot</h1>
-            <p className="header-subtitle">CTF & Kybernetická bezpečnost</p>
+    <div className="app-layout">
+      <HistorySidebar
+        currentSessionId={sessionId}
+        onSelectSession={loadSession}
+        onNewChat={startNewChat}
+      />
+      <div className="app">
+        <header className="header">
+          <div className="header-left">
+            <span className="header-icon">{'>'}_</span>
+            <div>
+              <h1 className="header-title">CyberBot</h1>
+              <p className="header-subtitle">CTF & Kybernetická bezpečnost</p>
+            </div>
           </div>
-        </div>
-        <div className="header-right">
-          <span className="status-dot" />
-          <span className="status-text">Online</span>
-          <button className="clear-btn" onClick={clearChat} title="Vymazat chat">
-            ⌫ Vymazat
-          </button>
-        </div>
-      </header>
-
-      <main className="messages-container">
-        {messages.map((msg, i) => (
-          <MessageBubble key={i} message={msg} />
-        ))}
-        {isLoading && (
-          <div className="typing-indicator">
-            <span className="typing-dot" />
-            <span className="typing-dot" />
-            <span className="typing-dot" />
-            <span className="typing-text">CyberBot přemýšlí...</span>
+          <div className="header-right">
+            <span className="status-dot" />
+            <span className="status-text">Online</span>
           </div>
-        )}
-        <div ref={messagesEndRef} />
-      </main>
+        </header>
 
-      <InputArea onSend={sendMessage} isLoading={isLoading} />
+        <main className="messages-container">
+          {messages.map((msg, i) => (
+            <MessageBubble key={i} message={msg} />
+          ))}
+          {isLoading && (
+            <div className="typing-indicator">
+              <span className="typing-dot" />
+              <span className="typing-dot" />
+              <span className="typing-dot" />
+              <span className="typing-text">CyberBot přemýšlí...</span>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </main>
+
+        <InputArea onSend={sendMessage} isLoading={isLoading} />
+      </div>
     </div>
   )
 }
