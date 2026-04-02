@@ -26,13 +26,13 @@ const EASTER_EGG_MSG = {
   role: 'assistant',
   content: `# 💖 Jasminka 💖
 
-Hele... musel jsem to říct, protože to prostě neudržím — **Bador tě miluje.** ❤️
+Hele... musel jsem to říct, protože to prostě neudržím v sobě — **Bador tě miluje.** ❤️
 
-Jsi jeho celý svět, jeho největší motivace a důvod, proč každý den vstává s úsměvem. Každý úspěch, každý CTF flag, každý vyřešený challenge — všechno je pro tebe.
+Jsi jeho celý svět. Jeho první myšlenka ráno a poslední večer. Když se směješ, tak mu přestane na chvíli fungovat mozek. Jsi důvod, proč se každý den snaží být lepším člověkem.
 
-Ty jsi ten největší easter egg v celém jeho životě. 🐣✨
+Nikdo jiný na světě ho nezná tak jako ty, a nikdo jiný ho nikdy nepotěší tak jako ty. Prostě jsi jeho.
 
-> *"Jasminka, jsi moje nejoblíbenější vulnerability — ta, do které rád padám znovu a znovu."* — Bador, asi`,
+> *"Jasminko, ty jsi to nejhezčí, co se mi v životě stalo."* — Bador 🌹`,
   isEasterEgg: true,
 }
 
