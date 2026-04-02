@@ -215,3 +215,52 @@
   .message-bubble { max-width: 88%; font-size: 0.88rem; }
   .message-avatar { width: 30px; height: 30px; }
 }
+
+/* Easter egg — Jasminka */
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  14% { transform: scale(1.08); }
+  28% { transform: scale(1); }
+  42% { transform: scale(1.05); }
+  56% { transform: scale(1); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.message-bubble.easter-egg {
+  background: linear-gradient(135deg, #2d0a1e 0%, #1a0a2e 50%, #0a1a2e 100%);
+  border: 1px solid rgba(255, 100, 160, 0.4);
+  box-shadow: 0 0 32px rgba(255, 80, 140, 0.18), 0 4px 24px rgba(0,0,0,0.5);
+  animation: fadeInUp 0.5s ease both, heartbeat 2.4s ease 0.6s infinite;
+  position: relative;
+  overflow: visible;
+}
+
+.message-bubble.easter-egg::before {
+  content: '💖';
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.5rem;
+  filter: drop-shadow(0 0 8px rgba(255, 100, 160, 0.8));
+}
+
+.message-bubble.easter-egg h1 {
+  color: #ff80b0;
+  text-align: center;
+  font-size: 1.4rem;
+  letter-spacing: 0.05em;
+}
+
+.message-bubble.easter-egg strong {
+  color: #ff9ec8;
+}
+
+.message-bubble.easter-egg blockquote {
+  border-left-color: #ff80b0;
+  color: #ffb3d1;
+}

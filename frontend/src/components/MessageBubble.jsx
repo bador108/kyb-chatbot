@@ -4,7 +4,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import './MessageBubble.css'
 
-export default function MessageBubble({ message }) {
+export default function MessageBubble({ message, isEasterEgg }) {
   const isUser = message.role === 'user'
 
   return (
@@ -12,7 +12,7 @@ export default function MessageBubble({ message }) {
       <div className="message-avatar">
         {isUser ? '👤' : '🛡️'}
       </div>
-      <div className={`message-bubble ${isUser ? 'user' : 'bot'}`}>
+      <div className={`message-bubble ${isUser ? 'user' : 'bot'}${isEasterEgg ? ' easter-egg' : ''}`}>
         {isUser ? (
           <pre className="user-text">{message.content}</pre>
         ) : (
