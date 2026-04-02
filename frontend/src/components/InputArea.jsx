@@ -21,6 +21,13 @@ export default function InputArea({ onSend, isLoading }) {
     ta.style.height = Math.min(ta.scrollHeight, 140) + 'px'
   }, [value])
 
+  // Auto-focus po skončení loadingu
+  useEffect(() => {
+    if (!isLoading) {
+      textareaRef.current?.focus()
+    }
+  }, [isLoading])
+
   const handleSubmit = () => {
     if ((!value.trim() && !file) || isLoading) return
     onSend(value.trim(), file)
@@ -28,7 +35,6 @@ export default function InputArea({ onSend, isLoading }) {
     setFile(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
     textareaRef.current.style.height = 'auto'
-    textareaRef.current.focus()
   }
 
   const handleKeyDown = (e) => {
@@ -46,6 +52,21 @@ export default function InputArea({ onSend, isLoading }) {
   const removeFile = () => {
     setFile(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault()
+        const blob = item.getAsFile()
+        const ext = item.type.split('/')[1] || 'png'
+        const pastedFile = new File([blob], `screenshot.${ext}`, { type: item.type })
+        setFile(pastedFile)
+        break
+      }
+    }
   }
 
   return (
@@ -79,7 +100,8 @@ export default function InputArea({ onSend, isLoading }) {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={file ? 'Přidej komentář k souboru...' : 'Napiš dotaz nebo vlož výstup příkazu...'}
+          onPaste={handlePaste}
+          placeholder={file ? 'Přidej komentář k souboru...' : 'Napiš dotaz nebo vlož výstup příkazu... (Ctrl+V pro screenshot)'}
           rows={1}
           disabled={isLoading}
         />
