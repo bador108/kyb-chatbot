@@ -3,9 +3,12 @@ import { useAuth } from './context/AuthContext'
 import MessageBubble from './components/MessageBubble'
 import InputArea from './components/InputArea'
 import HistorySidebar from './components/HistorySidebar'
+import LoginModal from './components/LoginModal'
 import './App.css'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
+const GUEST_WARN_AFTER = 3
+const GUEST_MAX = 10
 
 const FEATURE_CARDS = [
   {
@@ -108,12 +111,14 @@ function WelcomeScreen({ onSend }) {
 }
 
 export default function App() {
-  const { token } = useAuth()
+  const { token, isGuest, loading } = useAuth()
   const [sessionId, setSessionId] = useState(null)
   const [messages, setMessages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [eggState, setEggState] = useState(null)
+  const [guestMessageCount, setGuestMessageCount] = useState(0)
+  const [showLoginModal, setShowLoginModal] = useState(false)
   const messagesEndRef = useRef(null)
 
   const isWelcome = messages.length === 0

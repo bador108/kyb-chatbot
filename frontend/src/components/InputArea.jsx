@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import './InputArea.css'
 
-export default function InputArea({ onSend, isLoading }) {
+export default function InputArea({ onSend, isLoading, isGuest, guestCount, guestMax, guestBlocked, onShowLogin }) {
   const [value, setValue] = useState('')
   const [file, setFile] = useState(null)
   const textareaRef = useRef(null)
@@ -21,6 +21,10 @@ export default function InputArea({ onSend, isLoading }) {
   }, [isLoading])
 
   const handleSubmit = () => {
+    if (guestBlocked) {
+      if (onShowLogin) onShowLogin()
+      return
+    }
     if ((!value.trim() && !file) || isLoading) return
     onSend(value.trim(), file)
     setValue('')
@@ -47,6 +51,7 @@ export default function InputArea({ onSend, isLoading }) {
   }
 
   const handlePaste = (e) => {
+    if (isGuest) return
     const items = e.clipboardData?.items
     if (!items) return
     for (const item of items) {
@@ -60,6 +65,9 @@ export default function InputArea({ onSend, isLoading }) {
       }
     }
   }
+
+  const remaining = guestMax - (guestCount || 0)
+  const showGuestCounter = isGuest && guestCount > 0
 
   return (
     <div className="input-area">
@@ -81,34 +89,61 @@ export default function InputArea({ onSend, isLoading }) {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          placeholder={file ? 'Přidej komentář k souboru...' : 'Type your prompt here...'}
+          placeholder={
+            guestBlocked
+              ? 'Dosáhl jsi limitu zpráv. Přihlas se pro pokračování...'
+              : file
+              ? 'Přidej komentář k souboru...'
+              : 'Type your prompt here...'
+          }
           rows={1}
-          disabled={isLoading}
+          disabled={isLoading || guestBlocked}
         />
         <div className="input-actions">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".txt,.log,.md,.py,.js,.php,.sh,.c,.cpp,.h,.json,.xml,.html,.csv,.conf,.cfg,.ini,.env,.sql,.png,.jpg,.jpeg,.gif,.webp,text/*"
-            onChange={handleFileChange}
-            style={{ display: 'none' }}
-            id="file-upload"
-          />
-          <label htmlFor="file-upload" className={`upload-btn ${isLoading ? 'disabled' : ''}`} title="Nahrát soubor">
-            📎
-          </label>
+          {isGuest ? (
+            <label
+              className="upload-btn disabled"
+              title="Přihlaste se pro nahrávání souborů"
+              onClick={onShowLogin}
+              style={{ cursor: 'pointer', opacity: 0.35, pointerEvents: 'auto' }}
+            >
+              📎
+            </label>
+          ) : (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".txt,.log,.md,.py,.js,.php,.sh,.c,.cpp,.h,.json,.xml,.html,.csv,.conf,.cfg,.ini,.env,.sql,.png,.jpg,.jpeg,.gif,.webp,text/*"
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+                id="file-upload"
+              />
+              <label htmlFor="file-upload" className={`upload-btn ${isLoading ? 'disabled' : ''}`} title="Nahrát soubor">
+                📎
+              </label>
+            </>
+          )}
           <button
             className="send-btn"
             onClick={handleSubmit}
-            disabled={(!value.trim() && !file) || isLoading}
+            disabled={(!value.trim() && !file && !guestBlocked) || isLoading}
           >
             {isLoading ? '⋯' : '↑'}
           </button>
         </div>
       </div>
-      <p className="input-hint">
-        CyberBot může dělat chyby. Určeno výhradně pro legální CTF prostředí.
-      </p>
+
+      {showGuestCounter ? (
+        <p className="input-hint guest-counter">
+          Zbývá {Math.max(0, remaining)}/{guestMax} zpráv jako host ·{' '}
+          <span className="guest-login-link" onClick={onShowLogin}>Přihlásit se</span>
+        </p>
+      ) : (
+        <p className="input-hint">
+          CyberBot může dělat chyby. Určeno výlučně pro legální CTF prostředí.
+        </p>
+      )}
     </div>
   )
 }

@@ -111,3 +111,39 @@
   .login-card { padding: 28px 20px; border-radius: var(--radius); }
   .login-title { font-size: 1.5rem; }
 }
+
+.guest-continue-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 14px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: color 0.15s;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.guest-continue-btn:hover {
+  color: var(--text-2);
+}
+
+.guest-continue-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  padding: 4px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s;
+}
+
+.guest-continue-btn:hover { color: var(--text-2); }

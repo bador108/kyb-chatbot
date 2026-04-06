@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 import traceback
 import base64
@@ -114,6 +115,47 @@ class MessageRequest(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok", "knowledge_files": len(list(KNOWLEDGE_DIR.glob("*.md")))}
+
+
+
+@app.post("/guest/chat")
+async def guest_chat(
+    content: str = Form(""),
+    history: str = Form("[]"),
+):
+    """Guest endpoint - no auth required, no DB saving. Max 5000 chars."""
+    if len(content) > 5000:
+        raise HTTPException(status_code=400, detail="Zprava je prilis dlouha (max 5000 znaku)")
+    if not content.strip():
+        raise HTTPException(status_code=400, detail="Prazdna zprava")
+
+    try:
+        parsed_history = json.loads(history)
+        if not isinstance(parsed_history, list):
+            parsed_history = []
+    except Exception:
+        parsed_history = []
+
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    for item in parsed_history[-10:]:
+        role = item.get("role", "user")
+        if role not in ("user", "assistant"):
+            role = "user"
+        messages.append({"role": role, "content": str(item.get("content", ""))})
+    messages.append({"role": "user", "content": content})
+
+    try:
+        response = get_groq_client().chat.completions.create(
+            model=GROQ_MODEL,
+            messages=messages,
+            max_tokens=4096,
+        )
+        ai_text = response.choices[0].message.content
+    except Exception as e:
+        logging.error(f"Groq error (guest): {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Groq API error: {type(e).__name__}: {str(e)}")
+
+    return {"response": ai_text}
 
 
 @app.get("/sessions")

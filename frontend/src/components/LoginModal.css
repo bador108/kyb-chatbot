@@ -1,0 +1,143 @@
+.login-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: overlayIn 0.2s ease;
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.login-modal-card {
+  background: #0d0f13;
+  border: 1px solid rgba(57, 255, 20, 0.2);
+  border-radius: 20px;
+  padding: 32px 28px;
+  width: 100%;
+  max-width: 460px;
+  box-shadow: 0 0 60px rgba(57, 255, 20, 0.08), 0 24px 60px rgba(0,0,0,0.6);
+  animation: cardIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: scale(0.92) translateY(16px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.login-modal-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.login-modal-icon {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.login-modal-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #e8edf2;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.login-modal-sub {
+  font-size: 0.82rem;
+  color: #8a9ab0;
+  line-height: 1.5;
+}
+
+/* Perks */
+.login-modal-perks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.perks-col {
+  background: #111418;
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.perks-col-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.perks-col-good { color: #39ff14; }
+.perks-col-bad { color: #5c6272; }
+
+.perk-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin-bottom: 6px;
+  color: #8a9ab0;
+}
+
+.perk-item:last-child { margin-bottom: 0; }
+
+.perk-icon {
+  flex-shrink: 0;
+  font-style: normal;
+  margin-top: 1px;
+  font-size: 0.78rem;
+}
+
+.perk-good .perk-icon { color: #39ff14; }
+.perk-bad .perk-icon { color: #4a5568; }
+.perk-bad { color: #4a5568; }
+
+/* Actions */
+.login-modal-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.google-btn-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.dismiss-btn {
+  background: transparent;
+  border: none;
+  color: #4a5568;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 4px;
+  transition: color 0.15s;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dismiss-btn:hover { color: #8a9ab0; }
+
+@media (max-width: 480px) {
+  .login-modal-card { padding: 24px 16px; }
+  .login-modal-perks { grid-template-columns: 1fr; }
+}

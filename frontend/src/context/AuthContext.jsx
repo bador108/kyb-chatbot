@@ -46,8 +46,10 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  const isGuest = !user && !loading
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, loginWithGoogle, logout, isGuest }}>
       {children}
     </AuthContext.Provider>
   )

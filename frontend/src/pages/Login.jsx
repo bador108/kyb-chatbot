@@ -62,6 +62,8 @@ export default function Login() {
 
         <GoogleLoginButton onSuccess={handleCredential} />
 
+        <button className="guest-continue-btn" onClick={() => navigate("/")}>Pokračovat jako host →</button>
+
         <p className="login-disclaimer">
           Pouze pro legální cvičná prostředí · TryHackMe · HackTheBox · CTF
         </p>
