@@ -7,20 +7,32 @@ import './App.css'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
 
-const WELCOME = {
-  role: 'assistant',
-  content: `# CyberBot — CTF & Kybernetická bezpečnost
+const FEATURE_CARDS = [
+  {
+    icon: '⚡',
+    title: 'Quick Commands',
+    desc: 'Pre-built CTF queries for nmap, gobuster, netcat and more',
+  },
+  {
+    icon: '📎',
+    title: 'File Analysis',
+    desc: 'Upload logs, scripts, and screenshots for instant analysis',
+  },
+  {
+    icon: '🛡️',
+    title: 'CTF Methodology',
+    desc: 'Step-by-step privesc, enumeration and exploitation guidance',
+  },
+]
 
-Vítej! Jsem tvůj AI asistent pro CTF a kybernetickou bezpečnost.
-
-**Co umím:**
-- Analyzovat výstupy nástrojů (nmap, gobuster, netcat...)
-- Pomoci s privilege escalation
-- Vysvětlit reverse shell techniky
-- Poradit s CTF metodologií
-
-> Pomáhám výhradně s legálními cvičnými prostředími.`
-}
+const CATEGORY_TABS = [
+  { label: 'All', cmd: null },
+  { label: 'Recon', cmd: 'Jak správně použít nmap na CTF?' },
+  { label: 'Web', cmd: 'Ukázkový gobuster příkaz pro web enumeration?' },
+  { label: 'Privesc', cmd: 'Jaké jsou první kroky pro privilege escalation na Linuxu?' },
+  { label: 'RevShell', cmd: 'Jak získat a stabilizovat reverse shell?' },
+  { label: 'Crypto', cmd: 'Jak rozpoznat typ šifrování v CTF?' },
+]
 
 const EASTER_EGG_MSG = {
   role: 'assistant',
@@ -36,27 +48,75 @@ Nikdo jiný na světě ho nezná tak jako ty, a nikdo jiný ho nikdy nepotěší
   isEasterEgg: true,
 }
 
-// Detekuje otázku na Badorovu lásku
 function lovesBadorQuestion(text) {
   const t = text.toLowerCase()
   const hasBador = /bador/i.test(t)
-  const hasLove = /miluj|milovat|miluje|lásk|lask|love|loves|zamilov|zbožňuj|zbozbozn|zbozn|má rád|ma rad/i.test(t)
+  const hasLove = /miluj|milovat|miluje|lásk|lask|love|loves|zamilov|zbožňuj|zbozn|má rád|ma rad/i.test(t)
   return hasBador && hasLove
 }
 
-// Detekuje jméno Jasminka v jakémkoliv pádu
 function isJasminka(text) {
   return /jasmin/i.test(text)
+}
+
+function WelcomeScreen({ onSend }) {
+  const [activeTab, setActiveTab] = useState('All')
+
+  const handleTab = (tab) => {
+    setActiveTab(tab.label)
+    if (tab.cmd) onSend(tab.cmd, null)
+  }
+
+  return (
+    <div className="welcome-screen">
+      <div className="welcome-content">
+        <div className="welcome-icon-wrap">
+          <span className="welcome-icon">🛡️</span>
+        </div>
+        <h2 className="welcome-title">How can I help you today?</h2>
+        <p className="welcome-sub">
+          Your AI assistant for CTF and cybersecurity — ask anything or pick a topic below.
+          It will respond with guidance tailored to your challenge.
+        </p>
+
+        <div className="feature-cards">
+          {FEATURE_CARDS.map((card) => (
+            <div className="feature-card" key={card.title}>
+              <div className="feature-card-icon">{card.icon}</div>
+              <div className="feature-card-body">
+                <span className="feature-card-title">{card.title}</span>
+                <span className="feature-card-desc">{card.desc}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="category-tabs">
+          {CATEGORY_TABS.map((tab) => (
+            <button
+              key={tab.label}
+              className={`category-tab ${activeTab === tab.label ? 'active' : ''}`}
+              onClick={() => handleTab(tab)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function App() {
   const { token } = useAuth()
   const [sessionId, setSessionId] = useState(null)
-  const [messages, setMessages] = useState([WELCOME])
+  const [messages, setMessages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [eggState, setEggState] = useState(null) // null | 'waiting_name'
+  const [eggState, setEggState] = useState(null)
   const messagesEndRef = useRef(null)
+
+  const isWelcome = messages.length === 0
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -72,14 +132,14 @@ export default function App() {
     })
     if (res.ok) {
       const data = await res.json()
-      setMessages(data.length > 0 ? data : [WELCOME])
+      setMessages(data)
     }
   }
 
   const startNewChat = () => {
     setSidebarOpen(false)
     setSessionId(null)
-    setMessages([WELCOME])
+    setMessages([])
     setEggState(null)
   }
 
@@ -89,7 +149,6 @@ export default function App() {
 
     const userMsg = { role: 'user', content: content + (file ? `\n\n📎 *${file.name}*` : '') }
 
-    // Easter egg: čekáme na jméno
     if (eggState === 'waiting_name') {
       setMessages(prev => [...prev, userMsg])
       if (isJasminka(content)) {
@@ -105,20 +164,15 @@ export default function App() {
       return
     }
 
-    // Easter egg: detekce otázky
     if (lovesBadorQuestion(content) && !file) {
-      setMessages(prev => {
-        const filtered = prev.filter(m => m !== WELCOME)
-        return [...filtered, userMsg, {
-          role: 'assistant',
-          content: 'To je zajímavá otázka... 🤔 A kdo se ptá? Jak se jmenuješ?',
-        }]
-      })
+      setMessages(prev => [...prev, userMsg, {
+        role: 'assistant',
+        content: 'To je zajímavá otázka... 🤔 A kdo se ptá? Jak se jmenuješ?',
+      }])
       setEggState('waiting_name')
       return
     }
 
-    // Normální flow
     let sid = sessionId
     if (!sid) {
       const res = await fetch(`${API_URL}/sessions`, {
@@ -132,10 +186,7 @@ export default function App() {
       setSessionId(sid)
     }
 
-    setMessages(prev => {
-      const filtered = prev.filter(m => m !== WELCOME)
-      return [...filtered, userMsg]
-    })
+    setMessages(prev => [...prev, userMsg])
     setIsLoading(true)
 
     try {
@@ -186,6 +237,11 @@ export default function App() {
             </div>
           </div>
           <div className="header-right">
+            {!isWelcome && (
+              <button className="new-chat-header-btn" onClick={startNewChat}>
+                + Nový chat
+              </button>
+            )}
             <div className="status-badge">
               <span className="status-dot" />
               <span className="status-text">Online</span>
@@ -193,17 +249,22 @@ export default function App() {
           </div>
         </header>
 
-        <main className="messages-container">
-          {messages.map((msg, i) => (
-            <MessageBubble key={i} message={msg} isEasterEgg={msg.isEasterEgg} />
-          ))}
-          {isLoading && (
-            <div className="typing-indicator">
-              <span className="typing-dot" />
-              <span className="typing-dot" />
-              <span className="typing-dot" />
-              <span className="typing-text">CyberBot přemýšlí...</span>
-            </div>
+        <main className={`messages-container ${isWelcome ? 'welcome-mode' : ''}`}>
+          {isWelcome ? (
+            <WelcomeScreen onSend={sendMessage} />
+          ) : (
+            <>
+              {messages.map((msg, i) => (
+                <MessageBubble key={i} message={msg} isEasterEgg={msg.isEasterEgg} />
+              ))}
+              {isLoading && (
+                <div className="typing-indicator">
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                </div>
+              )}
+            </>
           )}
           <div ref={messagesEndRef} />
         </main>

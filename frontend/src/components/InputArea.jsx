@@ -1,13 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import './InputArea.css'
 
-const QUICK_COMMANDS = [
-  { label: 'nmap scan', text: 'Jak správně použít nmap na CTF?' },
-  { label: 'privesc', text: 'Jaké jsou první kroky pro privilege escalation na Linuxu?' },
-  { label: 'rev shell', text: 'Jak získat a stabilizovat reverse shell?' },
-  { label: 'gobuster', text: 'Ukázkový gobuster příkaz pro web enumeration?' },
-]
-
 export default function InputArea({ onSend, isLoading }) {
   const [value, setValue] = useState('')
   const [file, setFile] = useState(null)
@@ -21,7 +14,6 @@ export default function InputArea({ onSend, isLoading }) {
     ta.style.height = Math.min(ta.scrollHeight, 140) + 'px'
   }, [value])
 
-  // Auto-focus po skončení loadingu
   useEffect(() => {
     if (!isLoading) {
       textareaRef.current?.focus()
@@ -71,19 +63,6 @@ export default function InputArea({ onSend, isLoading }) {
 
   return (
     <div className="input-area">
-      <div className="quick-commands">
-        {QUICK_COMMANDS.map((cmd) => (
-          <button
-            key={cmd.label}
-            className="quick-cmd-btn"
-            onClick={() => { setValue(cmd.text); textareaRef.current?.focus() }}
-            disabled={isLoading}
-          >
-            {cmd.label}
-          </button>
-        ))}
-      </div>
-
       {file && (
         <div className="file-preview">
           <span className="file-icon">{file.type.startsWith('image/') ? '🖼' : '📄'}</span>
@@ -94,6 +73,7 @@ export default function InputArea({ onSend, isLoading }) {
       )}
 
       <div className="input-box">
+        <div className="input-bot-avatar">🛡️</div>
         <textarea
           ref={textareaRef}
           className="chat-input"
@@ -101,7 +81,7 @@ export default function InputArea({ onSend, isLoading }) {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          placeholder={file ? 'Přidej komentář k souboru...' : 'Napiš dotaz nebo vlož výstup příkazu... (Ctrl+V pro screenshot)'}
+          placeholder={file ? 'Přidej komentář k souboru...' : 'Type your prompt here...'}
           rows={1}
           disabled={isLoading}
         />
@@ -127,7 +107,7 @@ export default function InputArea({ onSend, isLoading }) {
         </div>
       </div>
       <p className="input-hint">
-        Určeno pro legální CTF · podporuje text, logy, obrázky (max 10 MB)
+        CyberBot může dělat chyby. Určeno výhradně pro legální CTF prostředí.
       </p>
     </div>
   )

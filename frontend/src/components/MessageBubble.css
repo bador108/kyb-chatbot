@@ -28,7 +28,8 @@
 }
 
 .message-wrapper.bot .message-avatar {
-  background: linear-gradient(135deg, var(--accent), #a78bfa);
+  background: linear-gradient(135deg, rgba(57, 255, 20, 0.18), rgba(57, 255, 20, 0.04));
+  border: 1px solid rgba(57, 255, 20, 0.22);
   font-size: 1rem;
 }
 
@@ -78,7 +79,7 @@
 .message-bubble.bot h2 {
   font-size: 0.98rem;
   font-weight: 600;
-  color: var(--accent-2);
+  color: var(--accent);
   margin: 14px 0 6px;
 }
 
@@ -109,13 +110,12 @@
 
 .message-bubble.bot blockquote {
   border-left: 3px solid var(--accent);
-  padding-left: 12px;
+  padding: 8px 12px;
   color: var(--text-2);
   margin: 8px 0;
   font-style: italic;
-  background: rgba(124,106,247,0.05);
+  background: rgba(57, 255, 20, 0.04);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  padding: 8px 12px;
 }
 
 .message-bubble.bot a {
@@ -155,7 +155,7 @@
 .code-lang {
   font-family: monospace;
   font-size: 0.7rem;
-  color: var(--text-3);
+  color: var(--accent);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -200,7 +200,7 @@
 
 .message-bubble.bot th {
   background: var(--bg-4);
-  color: var(--text-2);
+  color: var(--accent);
   font-weight: 600;
   font-size: 0.78rem;
   text-transform: uppercase;
