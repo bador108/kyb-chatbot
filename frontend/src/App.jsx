@@ -152,6 +152,12 @@ export default function App() {
     if (!content.trim() && !file) return
     if (isLoading) return
 
+    // Guest: block at limit
+    if (isGuest && guestMessageCount >= GUEST_MAX) {
+      setShowLoginModal(true)
+      return
+    }
+
     const userMsg = { role: 'user', content: content + (file ? `\n\n📎 *${file.name}*` : '') }
 
     if (eggState === 'waiting_name') {
@@ -178,6 +184,32 @@ export default function App() {
       return
     }
 
+    // ── GUEST MODE ───────────────────────────────────────────────────────────
+    if (isGuest) {
+      setMessages(prev => [...prev, userMsg])
+      setIsLoading(true)
+      const newCount = guestMessageCount + 1
+      setGuestMessageCount(newCount)
+      if (newCount >= GUEST_WARN_AFTER) setShowLoginModal(true)
+
+      try {
+        const historyMsgs = messages.slice(-10).map(m => ({ role: m.role, content: m.content }))
+        const formData = new FormData()
+        formData.append('content', content)
+        formData.append('history', JSON.stringify(historyMsgs))
+        const res = await fetch(`${API_URL}/guest/chat`, { method: 'POST', body: formData })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
+      } catch (err) {
+        setMessages(prev => [...prev, { role: 'assistant', content: `**Chyba:** ${err.message}` }])
+      } finally {
+        setIsLoading(false)
+      }
+      return
+    }
+
+    // ── AUTHENTICATED MODE ────────────────────────────────────────────────────
     let sid = sessionId
     if (!sid) {
       const res = await fetch(`${API_URL}/sessions`, {
@@ -217,8 +249,23 @@ export default function App() {
     }
   }
 
+  const guestBlocked = isGuest && guestMessageCount >= GUEST_MAX
+
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--accent)', fontFamily: 'monospace' }}>
+      Načítám...
+    </div>
+  )
+
   return (
     <div className="app-layout">
+      {showLoginModal && (
+        <LoginModal
+          guestMessageCount={guestMessageCount}
+          onDismiss={guestBlocked ? undefined : () => setShowLoginModal(false)}
+        />
+      )}
+
       {sidebarOpen && (
         <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
       )}
@@ -242,7 +289,12 @@ export default function App() {
             </div>
           </div>
           <div className="header-right">
-            {!isWelcome && (
+            {isGuest && (
+              <button className="guest-login-btn" onClick={() => setShowLoginModal(true)}>
+                Přihlásit se
+              </button>
+            )}
+            {!isWelcome && !isGuest && (
               <button className="new-chat-header-btn" onClick={startNewChat}>
                 + Nový chat
               </button>
@@ -274,7 +326,15 @@ export default function App() {
           <div ref={messagesEndRef} />
         </main>
 
-        <InputArea onSend={sendMessage} isLoading={isLoading} />
+        <InputArea
+          onSend={sendMessage}
+          isLoading={isLoading}
+          isGuest={isGuest}
+          guestCount={guestMessageCount}
+          guestMax={GUEST_MAX}
+          guestBlocked={guestBlocked}
+          onShowLogin={() => setShowLoginModal(true)}
+        />
       </div>
     </div>
   )
