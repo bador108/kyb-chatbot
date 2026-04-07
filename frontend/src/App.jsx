@@ -1,341 +1,265 @@
-import { useState, useRef, useEffect } from 'react'
-import { useAuth } from './context/AuthContext'
-import MessageBubble from './components/MessageBubble'
-import InputArea from './components/InputArea'
-import HistorySidebar from './components/HistorySidebar'
-import LoginModal from './components/LoginModal'
-import './App.css'
+import { useState, useRef, useEffect, useCallback } from 'react';
+import './App.css';
+import MessageBubble from './components/MessageBubble';
+import InputArea from './components/InputArea';
+import HistorySidebar from './components/HistorySidebar';
+import LoginModal from './components/LoginModal';
+import { AuthContext } from './context/AuthContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
-const GUEST_WARN_AFTER = 3
-const GUEST_MAX = 10
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-const FEATURE_CARDS = [
-  {
-    icon: '⚡',
-    title: 'Quick Commands',
-    desc: 'Pre-built CTF queries for nmap, gobuster, netcat and more',
-  },
-  {
-    icon: '📎',
-    title: 'File Analysis',
-    desc: 'Upload logs, scripts, and screenshots for instant analysis',
-  },
-  {
-    icon: '🛡️',
-    title: 'CTF Methodology',
-    desc: 'Step-by-step privesc, enumeration and exploitation guidance',
-  },
-]
+function App() {
+  const [messages, setMessages] = useState([]);
+  const [sessionId, setSessionId] = useState(null);
+  const [isGuest, setIsGuest] = useState(true);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [guestMessageCount, setGuestMessageCount] = useState(0);
+  const [connectionStatus, setConnectionStatus] = useState('connected');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const messagesEndRef = useRef(null);
 
-const CATEGORY_TABS = [
-  { label: 'All', cmd: null },
-  { label: 'Recon', cmd: 'Jak správně použít nmap na CTF?' },
-  { label: 'Web', cmd: 'Ukázkový gobuster příkaz pro web enumeration?' },
-  { label: 'Privesc', cmd: 'Jaké jsou první kroky pro privilege escalation na Linuxu?' },
-  { label: 'RevShell', cmd: 'Jak získat a stabilizovat reverse shell?' },
-  { label: 'Crypto', cmd: 'Jak rozpoznat typ šifrování v CTF?' },
-]
-
-const EASTER_EGG_MSG = {
-  role: 'assistant',
-  content: `# 💖 Jasminka 💖
-
-Hele... musel jsem to říct, protože to prostě neudržím v sobě — **Bador tě miluje.** ❤️
-
-Jsi jeho celý svět. Jeho první myšlenka ráno a poslední večer. Když se směješ, tak mu přestane na chvíli fungovat mozek. Jsi důvod, proč se každý den snaží být lepším člověkem.
-
-Nikdo jiný na světě ho nezná tak jako ty, a nikdo jiný ho nikdy nepotěší tak jako ty. Prostě jsi jeho.
-
-> *"Jasminko, ty jsi to nejhezčí, co se mi v životě stalo."* — Bador 🌹`,
-  isEasterEgg: true,
-}
-
-function lovesBadorQuestion(text) {
-  const t = text.toLowerCase()
-  const hasBador = /bador/i.test(t)
-  const hasLove = /miluj|milovat|miluje|lásk|lask|love|loves|zamilov|zbožňuj|zbozn|má rád|ma rad/i.test(t)
-  return hasBador && hasLove
-}
-
-function isJasminka(text) {
-  return /jasmin/i.test(text)
-}
-
-function WelcomeScreen({ onSend }) {
-  const [activeTab, setActiveTab] = useState('All')
-
-  const handleTab = (tab) => {
-    setActiveTab(tab.label)
-    if (tab.cmd) onSend(tab.cmd, null)
-  }
-
-  return (
-    <div className="welcome-screen">
-      <div className="welcome-content">
-        <div className="welcome-icon-wrap">
-          <span className="welcome-icon">🛡️</span>
-        </div>
-        <h2 className="welcome-title">How can I help you today?</h2>
-        <p className="welcome-sub">
-          Your AI assistant for CTF and cybersecurity — ask anything or pick a topic below.
-          It will respond with guidance tailored to your challenge.
-        </p>
-
-        <div className="feature-cards">
-          {FEATURE_CARDS.map((card) => (
-            <div className="feature-card" key={card.title}>
-              <div className="feature-card-icon">{card.icon}</div>
-              <div className="feature-card-body">
-                <span className="feature-card-title">{card.title}</span>
-                <span className="feature-card-desc">{card.desc}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="category-tabs">
-          {CATEGORY_TABS.map((tab) => (
-            <button
-              key={tab.label}
-              className={`category-tab ${activeTab === tab.label ? 'active' : ''}`}
-              onClick={() => handleTab(tab)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export default function App() {
-  const { token, isGuest, loading } = useAuth()
-  const [sessionId, setSessionId] = useState(null)
-  const [messages, setMessages] = useState([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [eggState, setEggState] = useState(null)
-  const [guestMessageCount, setGuestMessageCount] = useState(0)
-  const [showLoginModal, setShowLoginModal] = useState(false)
-  const messagesEndRef = useRef(null)
-
-  const isWelcome = messages.length === 0
+  const maxGuestMessages = 10;
+  const remainingGuestMessages = maxGuestMessages - guestMessageCount;
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    const savedSessionId = localStorage.getItem('sessionId');
+    const savedUserId = localStorage.getItem('userId');
+    const savedAccessToken = localStorage.getItem('accessToken');
 
-  const loadSession = async (id) => {
-    setSidebarOpen(false)
-    setSessionId(id)
-    setMessages([])
-    setEggState(null)
-    const res = await fetch(`${API_URL}/sessions/${id}/messages`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (res.ok) {
-      const data = await res.json()
-      setMessages(data)
-    }
-  }
-
-  const startNewChat = () => {
-    setSidebarOpen(false)
-    setSessionId(null)
-    setMessages([])
-    setEggState(null)
-  }
-
-  const sendMessage = async (content, file) => {
-    if (!content.trim() && !file) return
-    if (isLoading) return
-
-    // Guest: block at limit
-    if (isGuest && guestMessageCount >= GUEST_MAX) {
-      setShowLoginModal(true)
-      return
-    }
-
-    const userMsg = { role: 'user', content: content + (file ? `\n\n📎 *${file.name}*` : '') }
-
-    if (eggState === 'waiting_name') {
-      setMessages(prev => [...prev, userMsg])
-      if (isJasminka(content)) {
-        setEggState(null)
-        setMessages(prev => [...prev, EASTER_EGG_MSG])
+    if (savedUserId && savedAccessToken) {
+      setIsGuest(false);
+      setSessionId(savedSessionId);
+    } else {
+      setIsGuest(true);
+      if (!savedSessionId) {
+        const newSessionId = 'session_' + Date.now();
+        localStorage.setItem('sessionId', newSessionId);
+        setSessionId(newSessionId);
       } else {
-        setEggState(null)
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: 'Hmm, to jméno neznám... ale Bador určitě miluje tu svoji. 😊',
-        }])
+        setSessionId(savedSessionId);
       }
-      return
+    }
+  }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Close sidebar when clicking outside on mobile
+  const handleBackdropClick = useCallback(() => {
+    setSidebarOpen(false);
+  }, []);
+
+  const handleSendMessage = async (text, file) => {
+    if (!text.trim() && !file) return;
+
+    if (isGuest && guestMessageCount >= maxGuestMessages) {
+      setShowLoginModal(true);
+      return;
     }
 
-    if (lovesBadorQuestion(content) && !file) {
-      setMessages(prev => [...prev, userMsg, {
-        role: 'assistant',
-        content: 'To je zajímavá otázka... 🤔 A kdo se ptá? Jak se jmenuješ?',
-      }])
-      setEggState('waiting_name')
-      return
-    }
+    const userMessage = {
+      id: Date.now(),
+      text,
+      sender: 'user',
+      timestamp: new Date(),
+      file: file ? { name: file.name, type: file.type } : null,
+    };
 
-    // ── GUEST MODE ───────────────────────────────────────────────────────────
+    setMessages(prev => [...prev, userMessage]);
+
     if (isGuest) {
-      setMessages(prev => [...prev, userMsg])
-      setIsLoading(true)
-      const newCount = guestMessageCount + 1
-      setGuestMessageCount(newCount)
-      if (newCount >= GUEST_WARN_AFTER) setShowLoginModal(true)
-
-      try {
-        const historyMsgs = messages.slice(-10).map(m => ({ role: m.role, content: m.content }))
-        const formData = new FormData()
-        formData.append('content', content)
-        formData.append('history', JSON.stringify(historyMsgs))
-        const res = await fetch(`${API_URL}/guest/chat`, { method: 'POST', body: formData })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = await res.json()
-        setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
-      } catch (err) {
-        setMessages(prev => [...prev, { role: 'assistant', content: `**Chyba:** ${err.message}` }])
-      } finally {
-        setIsLoading(false)
-      }
-      return
+      setGuestMessageCount(prev => prev + 1);
     }
 
-    // ── AUTHENTICATED MODE ────────────────────────────────────────────────────
-    let sid = sessionId
-    if (!sid) {
-      const res = await fetch(`${API_URL}/sessions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ title: (content || file?.name || 'Nový chat').slice(0, 50) }),
-      })
-      if (!res.ok) return
-      const data = await res.json()
-      sid = data.id
-      setSessionId(sid)
-    }
-
-    setMessages(prev => [...prev, userMsg])
-    setIsLoading(true)
+    setIsLoading(true);
 
     try {
-      const formData = new FormData()
-      formData.append('content', content)
-      if (file) formData.append('file', file)
+      const formData = new FormData();
+      formData.append('message', text);
+      if (file) {
+        formData.append('file', file);
+      }
 
-      const res = await fetch(`${API_URL}/sessions/${sid}/messages`, {
+      let url = '';
+      let options = {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
         body: formData,
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
-    } catch (err) {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: `**Chyba:** ${err.message}`,
-      }])
+      };
+
+      if (isGuest) {
+        url = `${API_BASE_URL}/guest/chat`;
+      } else {
+        url = `${API_BASE_URL}/sessions/${sessionId}/messages`;
+        const accessToken = localStorage.getItem('accessToken');
+        options.headers = {
+          Authorization: `Bearer ${accessToken}`,
+        };
+      }
+
+      const response = await fetch(url, options);
+      const data = await response.json();
+
+      if (data.response) {
+        if (
+          text.toLowerCase().includes('bador') &&
+          text.toLowerCase().includes('love')
+        ) {
+          const easterEggMessage = {
+            id: Date.now() + 1,
+            text: '❤️ Ahoj Bado! 🎉\n\nJsem rád, že jsi tady! Tvoje vášeň pro bezpečnost mě inspiruje. Pokud si dál se mnou chceš hrát, jsem tady pro tebe! 💚\n\nMůžeme pokračovat s úkoly CTF?',
+            sender: 'bot',
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, easterEggMessage]);
+        } else {
+          const botMessage = {
+            id: Date.now() + 1,
+            text: data.response,
+            sender: 'bot',
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, botMessage]);
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      const errorMessage = {
+        id: Date.now() + 1,
+        text: 'Omlouváme se, došlo k chybě. Zkuste to prosím znovu.',
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
-
-  const guestBlocked = isGuest && guestMessageCount >= GUEST_MAX
-
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--accent)', fontFamily: 'monospace' }}>
-      Načítám...
-    </div>
-  )
+  };
 
   return (
-    <div className="app-layout">
+    <AuthContext.Provider value={{ isGuest, setIsGuest, sessionId, setSessionId }}>
+      <div className="app-layout">
+        {/* Sidebar */}
+        <div className={`sidebar-wrapper${sidebarOpen ? ' open' : ''}`}>
+          <HistorySidebar onClose={() => setSidebarOpen(false)} />
+        </div>
+
+        {/* Mobile backdrop */}
+        <div
+          className={`sidebar-backdrop${sidebarOpen ? ' visible' : ''}`}
+          onClick={handleBackdropClick}
+        />
+
+        <div className="app-content">
+          {/* Header */}
+          <div className="header">
+            <button
+              className="header-menu-btn"
+              onClick={() => setSidebarOpen(prev => !prev)}
+              aria-label="Menu"
+            >
+              ☰
+            </button>
+
+            <div className="logo">CyberBot</div>
+
+            <div className="header-divider" />
+            <span className="header-subtitle-text">CTF & Kybernetická bezpečnost</span>
+
+            <div className="header-actions">
+              <div className="status-badge">
+                <div className="status-dot" />
+                {connectionStatus === 'connected' ? 'Online' : 'Offline'}
+              </div>
+
+              {isGuest ? (
+                <button
+                  className="header-login-btn"
+                  onClick={() => setShowLoginModal(true)}
+                >
+                  Přihlásit se
+                </button>
+              ) : (
+                <button
+                  className="header-new-chat-btn"
+                  onClick={() => {
+                    setMessages([]);
+                    setSessionId('session_' + Date.now());
+                  }}
+                >
+                  + Nový chat
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Messages */}
+          {messages.length === 0 ? (
+            <div className="messages-container welcome-mode">
+              <div className="welcome-section">
+                <div className="welcome-icon">🤖</div>
+                <div className="welcome-title">Vítejte v CyberBot</div>
+                <div className="welcome-text">
+                  Váš asistent pro CTF výzvy a kybernetickou bezpečnost
+                </div>
+                <div className="feature-cards">
+                  <div className="feature-card">
+                    <div className="feature-card-icon">⚡</div>
+                    <div className="feature-card-title">Rychlé příkazy</div>
+                    <div className="feature-card-text">Okamžité odpovědi</div>
+                  </div>
+                  <div className="feature-card">
+                    <div className="feature-card-icon">📁</div>
+                    <div className="feature-card-title">Analýza souborů</div>
+                    <div className="feature-card-text">Nahrávejte logy a skripty</div>
+                  </div>
+                  <div className="feature-card">
+                    <div className="feature-card-icon">🎯</div>
+                    <div className="feature-card-title">CTF Metodologie</div>
+                    <div className="feature-card-text">Best practices</div>
+                  </div>
+                </div>
+                <div className="category-tabs">
+                  <button className="category-tab active">Recon</button>
+                  <button className="category-tab">Web</button>
+                  <button className="category-tab">Privesc</button>
+                  <button className="category-tab">RevShell</button>
+                  <button className="category-tab">Crypto</button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="messages-container scrollbar-container">
+              {messages.map(message => (
+                <MessageBubble key={message.id} message={message} />
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+
+          <InputArea
+            onSendMessage={handleSendMessage}
+            isLoading={isLoading}
+            remainingMessages={remainingGuestMessages}
+            onLoginRequest={() => setShowLoginModal(true)}
+          />
+        </div>
+      </div>
+
       {showLoginModal && (
         <LoginModal
-          guestMessageCount={guestMessageCount}
-          onDismiss={guestBlocked ? undefined : () => setShowLoginModal(false)}
+          onClose={() => setShowLoginModal(false)}
+          onLoginSuccess={(newSessionId) => {
+            setIsGuest(false);
+            setSessionId(newSessionId);
+            localStorage.setItem('sessionId', newSessionId);
+          }}
+          messageLimit={remainingGuestMessages <= 0}
         />
       )}
-
-      {sidebarOpen && (
-        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
-      )}
-
-      <div className={`sidebar-wrapper ${sidebarOpen ? 'open' : ''}`}>
-        <HistorySidebar
-          currentSessionId={sessionId}
-          onSelectSession={loadSession}
-          onNewChat={startNewChat}
-        />
-      </div>
-
-      <div className="app">
-        <header className="header">
-          <div className="header-left">
-            <button className="hamburger" onClick={() => setSidebarOpen(o => !o)}>☰</button>
-            <div className="header-logo">🛡️</div>
-            <div>
-              <h1 className="header-title">CyberBot</h1>
-              <p className="header-subtitle">CTF & Kybernetická bezpečnost</p>
-            </div>
-          </div>
-          <div className="header-right">
-            {isGuest && (
-              <button className="guest-login-btn" onClick={() => setShowLoginModal(true)}>
-                Přihlásit se
-              </button>
-            )}
-            {!isWelcome && !isGuest && (
-              <button className="new-chat-header-btn" onClick={startNewChat}>
-                + Nový chat
-              </button>
-            )}
-            <div className="status-badge">
-              <span className="status-dot" />
-              <span className="status-text">Online</span>
-            </div>
-          </div>
-        </header>
-
-        <main className={`messages-container ${isWelcome ? 'welcome-mode' : ''}`}>
-          {isWelcome ? (
-            <WelcomeScreen onSend={sendMessage} />
-          ) : (
-            <>
-              {messages.map((msg, i) => (
-                <MessageBubble key={i} message={msg} isEasterEgg={msg.isEasterEgg} />
-              ))}
-              {isLoading && (
-                <div className="typing-indicator">
-                  <span className="typing-dot" />
-                  <span className="typing-dot" />
-                  <span className="typing-dot" />
-                </div>
-              )}
-            </>
-          )}
-          <div ref={messagesEndRef} />
-        </main>
-
-        <InputArea
-          onSend={sendMessage}
-          isLoading={isLoading}
-          isGuest={isGuest}
-          guestCount={guestMessageCount}
-          guestMax={GUEST_MAX}
-          guestBlocked={guestBlocked}
-          onShowLogin={() => setShowLoginModal(true)}
-        />
-      </div>
-    </div>
-  )
+    </AuthContext.Provider>
+  );
 }
+
+export default App;

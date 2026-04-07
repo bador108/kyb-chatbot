@@ -1,149 +1,155 @@
-import { useState, useRef, useEffect } from 'react'
-import './InputArea.css'
+import React, { useEffect, useRef, useContext } from 'react';
+import './InputArea.css';
+import { AuthContext } from '../context/AuthContext';
 
-export default function InputArea({ onSend, isLoading, isGuest, guestCount, guestMax, guestBlocked, onShowLogin }) {
-  const [value, setValue] = useState('')
-  const [file, setFile] = useState(null)
-  const textareaRef = useRef(null)
-  const fileInputRef = useRef(null)
+const ACCEPTED_FORMATS = ['.py', '.js', '.php', '.sql', '.txt', '.md', '.json', '.xml', '.png', '.jpg', '.gif', '.webp'];
+
+export default function InputArea({ onSendMessage, isLoading, remainingMessages, onLoginRequest }) {
+  const [message, setMessage] = React.useState('');
+  const [file, setFile] = React.useState(null);
+  const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const { isGuest } = useContext(AuthContext);
+
+  const maxGuestMessages = 10;
+  const isGuestBlocked = isGuest && remainingMessages <= 0;
+  const canUpload = !isGuest;
 
   useEffect(() => {
-    const ta = textareaRef.current
-    if (!ta) return
-    ta.style.height = 'auto'
-    ta.style.height = Math.min(ta.scrollHeight, 140) + 'px'
-  }, [value])
-
-  useEffect(() => {
-    if (!isLoading) {
-      textareaRef.current?.focus()
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 140) + 'px';
     }
-  }, [isLoading])
-
-  const handleSubmit = () => {
-    if (guestBlocked) {
-      if (onShowLogin) onShowLogin()
-      return
-    }
-    if ((!value.trim() && !file) || isLoading) return
-    onSend(value.trim(), file)
-    setValue('')
-    setFile(null)
-    if (fileInputRef.current) fileInputRef.current.value = ''
-    textareaRef.current.style.height = 'auto'
-  }
+  }, [message]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit()
+      e.preventDefault();
+      handleSend();
     }
-  }
+  };
 
-  const handleFileChange = (e) => {
-    const f = e.target.files[0]
-    if (f) setFile(f)
-  }
-
-  const removeFile = () => {
-    setFile(null)
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  const handlePaste = (e) => {
-    if (isGuest) return
-    const items = e.clipboardData?.items
-    if (!items) return
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        e.preventDefault()
-        const blob = item.getAsFile()
-        const ext = item.type.split('/')[1] || 'png'
-        const pastedFile = new File([blob], `screenshot.${ext}`, { type: item.type })
-        setFile(pastedFile)
-        break
+  const handleSend = () => {
+    if (message.trim() || file) {
+      onSendMessage(message, file);
+      setMessage('');
+      setFile(null);
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
       }
     }
-  }
+  };
 
-  const remaining = guestMax - (guestCount || 0)
-  const showGuestCounter = isGuest && guestCount > 0
+  const handleFileSelect = (e) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      const fileExtension = '.' + selectedFile.name.split('.').pop().toLowerCase();
+      if (ACCEPTED_FORMATS.includes(fileExtension)) {
+        setFile(selectedFile);
+      } else {
+        alert('Nepodporovaný formát souboru');
+      }
+    }
+  };
+
+  const handlePaste = (e) => {
+    if (!canUpload || isGuestBlocked) return;
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let item of items) {
+        if (item.kind === 'file') {
+          const f = item.getAsFile();
+          if (f && f.type.startsWith('image/')) {
+            setFile(f);
+            break;
+          }
+        }
+      }
+    }
+  };
+
+  const getFileIcon = (fileName) => {
+    const ext = fileName.split('.').pop().toLowerCase();
+    const iconMap = {
+      py: '🐍', js: '⚙️', php: '🐘', sql: '📊',
+      txt: '📄', md: '📝', json: '{}', xml: '<>',
+      png: '🖼️', jpg: '🖼️', gif: '🎬', webp: '🖼️',
+    };
+    return iconMap[ext] || '📎';
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const placeholderText = isGuestBlocked
+    ? 'Dosáhl jsi limitu — přihlas se pro pokračování'
+    : file
+      ? 'Přidej komentář k souboru...'
+      : 'Napiš zprávu... (Enter = odeslat, Shift+Enter = nový řádek)';
 
   return (
     <div className="input-area">
       {file && (
         <div className="file-preview">
-          <span className="file-icon">{file.type.startsWith('image/') ? '🖼' : '📄'}</span>
-          <span className="file-name">{file.name}</span>
-          <span className="file-size">({(file.size / 1024).toFixed(0)} KB)</span>
-          <button className="file-remove" onClick={removeFile}>×</button>
+          <div className="file-preview-icon">{getFileIcon(file.name)}</div>
+          <div className="file-preview-info">
+            <div className="file-preview-name">{file.name}</div>
+            <div className="file-preview-size">{formatFileSize(file.size)}</div>
+          </div>
+          <button className="file-preview-remove" onClick={() => setFile(null)}>✕</button>
         </div>
       )}
 
-      <div className="input-box">
-        <div className="input-bot-avatar">🛡️</div>
+      <div className={`input-box${isGuestBlocked || isLoading ? ' disabled' : ''}`}>
+        <button
+          className="upload-btn"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={!canUpload || isGuestBlocked || isLoading}
+          title={!canUpload ? 'Přihlaste se pro nahrávání souborů' : 'Nahrát soubor'}
+        >
+          📎
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          onChange={handleFileSelect}
+          accept={ACCEPTED_FORMATS.join(',')}
+          style={{ display: 'none' }}
+        />
         <textarea
           ref={textareaRef}
           className="chat-input"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
-          placeholder={
-            guestBlocked
-              ? 'Dosáhl jsi limitu zpráv. Přihlas se pro pokračování...'
-              : file
-              ? 'Přidej komentář k souboru...'
-              : 'Type your prompt here...'
-          }
-          rows={1}
-          disabled={isLoading || guestBlocked}
+          placeholder={placeholderText}
+          disabled={isGuestBlocked || isLoading}
+          rows="1"
         />
-        <div className="input-actions">
-          {isGuest ? (
-            <label
-              className="upload-btn disabled"
-              title="Přihlaste se pro nahrávání souborů"
-              onClick={onShowLogin}
-              style={{ cursor: 'pointer', opacity: 0.35, pointerEvents: 'auto' }}
-            >
-              📎
-            </label>
-          ) : (
-            <>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".txt,.log,.md,.py,.js,.php,.sh,.c,.cpp,.h,.json,.xml,.html,.csv,.conf,.cfg,.ini,.env,.sql,.png,.jpg,.jpeg,.gif,.webp,text/*"
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-                id="file-upload"
-              />
-              <label htmlFor="file-upload" className={`upload-btn ${isLoading ? 'disabled' : ''}`} title="Nahrát soubor">
-                📎
-              </label>
-            </>
-          )}
-          <button
-            className="send-btn"
-            onClick={handleSubmit}
-            disabled={(!value.trim() && !file && !guestBlocked) || isLoading}
-          >
-            {isLoading ? '⋯' : '↑'}
-          </button>
-        </div>
+        <button
+          className="send-btn"
+          onClick={handleSend}
+          disabled={isLoading || (!message.trim() && !file) || isGuestBlocked}
+          aria-label="Odeslat"
+        >
+          {isLoading ? '…' : '↑'}
+        </button>
       </div>
 
-      {showGuestCounter ? (
-        <p className="input-hint guest-counter">
-          Zbývá {Math.max(0, remaining)}/{guestMax} zpráv jako host ·{' '}
-          <span className="guest-login-link" onClick={onShowLogin}>Přihlásit se</span>
-        </p>
-      ) : (
-        <p className="input-hint">
-          CyberBot může dělat chyby. Určeno výlučně pro legální CTF prostředí.
-        </p>
+      {isGuest && !isGuestBlocked && (
+        <div className="input-hint">
+          Zbývá {remainingMessages}/{maxGuestMessages} zpráv ·{' '}
+          <button className="guest-limit-btn" onClick={onLoginRequest}>
+            Přihlásit se pro neomezený přístup
+          </button>
+        </div>
       )}
     </div>
-  )
+  );
 }
