@@ -22,6 +22,23 @@ const FEATURE_PROMPTS = {
   method: 'Popiš CTF metodologii od začátku do konce.',
 };
 
+// Progressively reveal text with typewriter effect
+function streamMessage(fullText, messageId, setMessages) {
+  const CHARS_PER_TICK = 6;
+  const TICK_MS = 16;
+  let i = 0;
+  const interval = setInterval(() => {
+    i = Math.min(i + CHARS_PER_TICK, fullText.length);
+    setMessages(prev => prev.map(m =>
+      m.id === messageId
+        ? { ...m, content: fullText.slice(0, i), isStreaming: i < fullText.length }
+        : m
+    ));
+    if (i >= fullText.length) clearInterval(interval);
+  }, TICK_MS);
+  return interval;
+}
+
 function App() {
   const { isGuest, token } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -32,47 +49,41 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('Recon');
   const messagesEndRef = useRef(null);
+  const streamRef = useRef(null);
   const maxGuestMessages = 10;
 
-  // When authenticated, fetch or create a backend session
+  // Init backend session when authenticated
   useEffect(() => {
     if (isGuest || !token) return;
-    const initSession = async () => {
+    const init = async () => {
       try {
-        // Try to get existing sessions
         const res = await fetch(API_BASE_URL + '/sessions', {
           headers: { Authorization: 'Bearer ' + token },
         });
         if (res.ok) {
           const sessions = await res.json();
-          if (sessions.length > 0) {
-            setSessionId(sessions[0].id);
-            return;
-          }
+          if (sessions.length > 0) { setSessionId(sessions[0].id); return; }
         }
-        // No sessions yet — create one
         const createRes = await fetch(API_BASE_URL + '/sessions', {
           method: 'POST',
-          headers: {
-            Authorization: 'Bearer ' + token,
-            'Content-Type': 'application/json',
-          },
+          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
           body: JSON.stringify({ title: 'Nový chat' }),
         });
         if (createRes.ok) {
-          const session = await createRes.json();
-          setSessionId(session.id);
+          const s = await createRes.json();
+          setSessionId(s.id);
         }
-      } catch (err) {
-        console.error('Session init error:', err);
-      }
+      } catch (err) { console.error('Session init:', err); }
     };
-    initSession();
+    init();
   }, [isGuest, token]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Cleanup streaming on unmount
+  useEffect(() => () => { if (streamRef.current) clearInterval(streamRef.current); }, []);
 
   const handleBackdropClick = useCallback(() => setSidebarOpen(false), []);
 
@@ -83,20 +94,14 @@ function App() {
       return;
     }
 
-    const userMessage = {
-      id: Date.now(),
-      role: 'user',
-      content: text,
-      timestamp: new Date(),
-      file: file ? { name: file.name, type: file.type } : null,
-    };
+    const userMessage = { id: Date.now(), role: 'user', content: text, timestamp: new Date(),
+      file: file ? { name: file.name, type: file.type } : null };
     setMessages(prev => [...prev, userMessage]);
     if (isGuest) setGuestMessageCount(prev => prev + 1);
     setIsLoading(true);
 
     try {
       const formData = new FormData();
-      // Backend expects "content" field (not "message")
       formData.append('content', text);
       if (file) formData.append('file', file);
 
@@ -106,78 +111,66 @@ function App() {
       if (isGuest) {
         url = API_BASE_URL + '/guest/chat';
       } else {
-        // If no sessionId yet, create one inline
         let sid = sessionId;
         if (!sid) {
-          const createRes = await fetch(API_BASE_URL + '/sessions', {
+          const r = await fetch(API_BASE_URL + '/sessions', {
             method: 'POST',
-            headers: {
-              Authorization: 'Bearer ' + token,
-              'Content-Type': 'application/json',
-            },
+            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ title: text.slice(0, 50) }),
           });
-          if (createRes.ok) {
-            const session = await createRes.json();
-            sid = session.id;
-            setSessionId(sid);
-          }
+          if (r.ok) { const s = await r.json(); sid = s.id; setSessionId(sid); }
         }
         url = API_BASE_URL + '/sessions/' + sid + '/messages';
         options.headers = { Authorization: 'Bearer ' + token };
       }
 
       const response = await fetch(url, options);
-      if (!response.ok) {
-        throw new Error('Server responded with ' + response.status);
-      }
+      if (!response.ok) throw new Error('Server ' + response.status);
       const data = await response.json();
 
       if (data.response) {
         const isEasterEgg = text.toLowerCase().includes('bador') && text.toLowerCase().includes('love');
+        const fullText = isEasterEgg
+          ? 'Ahoj Bado! ❤️ Jsem rád, že jsi tady! Tvoje vášeň pro bezpečnost mě inspiruje.'
+          : data.response;
+
+        const botId = Date.now() + 1;
+        // Start with empty content, isStreaming = true
         setMessages(prev => [...prev, {
-          id: Date.now() + 1,
-          role: 'assistant',
-          content: isEasterEgg
-            ? 'Ahoj Bado! ❤️ Jsem rád, že jsi tady! Tvoje vášeň pro bezpečnost mě inspiruje.'
-            : data.response,
-          timestamp: new Date(),
+          id: botId, role: 'assistant', content: '', isStreaming: true, timestamp: new Date(),
         }]);
+
+        // Stream the text progressively
+        setIsLoading(false);
+        if (streamRef.current) clearInterval(streamRef.current);
+        streamRef.current = streamMessage(fullText, botId, setMessages);
+        return; // don't setIsLoading(false) in finally
       }
     } catch (error) {
       console.error('Error:', error);
       setMessages(prev => [...prev, {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: 'Chyba při odeslání zprávy: ' + error.message + '. Zkuste obnovit stránku.',
+        id: Date.now() + 1, role: 'assistant',
+        content: 'Chyba při odeslání zprávy: ' + error.message,
         timestamp: new Date(),
       }]);
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   };
 
   const handleQuickPrompt = (text) => handleSendMessage(text, null);
 
   const handleNewChat = async () => {
+    if (streamRef.current) clearInterval(streamRef.current);
     setMessages([]);
     if (!isGuest && token) {
       try {
-        const createRes = await fetch(API_BASE_URL + '/sessions', {
+        const r = await fetch(API_BASE_URL + '/sessions', {
           method: 'POST',
-          headers: {
-            Authorization: 'Bearer ' + token,
-            'Content-Type': 'application/json',
-          },
+          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
           body: JSON.stringify({ title: 'Nový chat' }),
         });
-        if (createRes.ok) {
-          const session = await createRes.json();
-          setSessionId(session.id);
-        }
-      } catch (err) {
-        console.error('New session error:', err);
-      }
+        if (r.ok) { const s = await r.json(); setSessionId(s.id); }
+      } catch (err) { console.error('New session:', err); }
     }
   };
 
@@ -186,35 +179,22 @@ function App() {
       <div className={`sidebar-wrapper${sidebarOpen ? ' open' : ''}`}>
         <HistorySidebar onClose={() => setSidebarOpen(false)} />
       </div>
-      <div
-        className={`sidebar-backdrop${sidebarOpen ? ' visible' : ''}`}
-        onClick={handleBackdropClick}
-      />
+      <div className={`sidebar-backdrop${sidebarOpen ? ' visible' : ''}`} onClick={handleBackdropClick} />
+
       <div className="app-content">
         <div className="header">
-          <button
-            className="header-menu-btn"
-            onClick={() => setSidebarOpen(prev => !prev)}
-            aria-label="Menu"
-          >
+          <button className="header-menu-btn" onClick={() => setSidebarOpen(p => !p)} aria-label="Menu">
             &#9776;
           </button>
           <div className="logo">CyberBot</div>
           <div className="header-divider" />
           <span className="header-subtitle-text">CTF & Kybernetická bezpečnost</span>
           <div className="header-actions">
-            <div className="status-badge">
-              <div className="status-dot" />
-              Online
-            </div>
+            <div className="status-badge"><div className="status-dot" />Online</div>
             {isGuest ? (
-              <button className="header-login-btn" onClick={() => setShowLoginModal(true)}>
-                Přihlásit se
-              </button>
+              <button className="header-login-btn" onClick={() => setShowLoginModal(true)}>Přihlásit se</button>
             ) : (
-              <button className="header-new-chat-btn" onClick={handleNewChat}>
-                + Nový chat
-              </button>
+              <button className="header-new-chat-btn" onClick={handleNewChat}>+ Nový chat</button>
             )}
           </div>
         </div>
@@ -224,9 +204,7 @@ function App() {
             <div className="welcome-section">
               <div className="welcome-icon">🤖</div>
               <div className="welcome-title">Vítejte v CyberBot</div>
-              <div className="welcome-text">
-                Váš asistent pro CTF výzvy a kybernetickou bezpečnost
-              </div>
+              <div className="welcome-text">Váš asistent pro CTF výzvy a kybernetickou bezpečnost</div>
               <div className="feature-cards">
                 <div className="feature-card" onClick={() => handleQuickPrompt(FEATURE_PROMPTS.quick)}>
                   <div className="feature-card-icon">⚡</div>
@@ -246,22 +224,27 @@ function App() {
               </div>
               <div className="category-tabs">
                 {Object.keys(CATEGORY_PROMPTS).map(tab => (
-                  <button
-                    key={tab}
+                  <button key={tab}
                     className={`category-tab${activeTab === tab ? ' active' : ''}`}
                     onClick={() => { setActiveTab(tab); handleQuickPrompt(CATEGORY_PROMPTS[tab]); }}
-                  >
-                    {tab}
-                  </button>
+                  >{tab}</button>
                 ))}
               </div>
             </div>
           </div>
         ) : (
           <div className="messages-container scrollbar-container">
-            {messages.map(message => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
+            {messages.map(message => <MessageBubble key={message.id} message={message} />)}
+
+            {/* Typing indicator – 3 tečky, zatímco čekáme na odpověď */}
+            {isLoading && (
+              <div className="typing-indicator">
+                <div className="avatar bot">🛡️</div>
+                <div className="typing-dots">
+                  <span /><span /><span />
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -275,10 +258,7 @@ function App() {
       </div>
 
       {showLoginModal && (
-        <LoginModal
-          guestMessageCount={guestMessageCount}
-          onDismiss={() => setShowLoginModal(false)}
-        />
+        <LoginModal guestMessageCount={guestMessageCount} onDismiss={() => setShowLoginModal(false)} />
       )}
     </div>
   );
