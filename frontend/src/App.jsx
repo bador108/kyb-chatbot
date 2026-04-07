@@ -25,13 +25,7 @@ const FEATURE_PROMPTS = {
 function App() {
   const { isGuest, token } = useAuth();
   const [messages, setMessages] = useState([]);
-  const [sessionId] = useState(() => {
-    const saved = localStorage.getItem('sessionId');
-    if (saved) return saved;
-    const newId = 'session_' + Date.now();
-    localStorage.setItem('sessionId', newId);
-    return newId;
-  });
+  const [sessionId, setSessionId] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [guestMessageCount, setGuestMessageCount] = useState(0);
@@ -39,6 +33,42 @@ function App() {
   const [activeTab, setActiveTab] = useState('Recon');
   const messagesEndRef = useRef(null);
   const maxGuestMessages = 10;
+
+  // When authenticated, fetch or create a backend session
+  useEffect(() => {
+    if (isGuest || !token) return;
+    const initSession = async () => {
+      try {
+        // Try to get existing sessions
+        const res = await fetch(API_BASE_URL + '/sessions', {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        if (res.ok) {
+          const sessions = await res.json();
+          if (sessions.length > 0) {
+            setSessionId(sessions[0].id);
+            return;
+          }
+        }
+        // No sessions yet — create one
+        const createRes = await fetch(API_BASE_URL + '/sessions', {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer ' + token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ title: 'Nový chat' }),
+        });
+        if (createRes.ok) {
+          const session = await createRes.json();
+          setSessionId(session.id);
+        }
+      } catch (err) {
+        console.error('Session init error:', err);
+      }
+    };
+    initSession();
+  }, [isGuest, token]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -53,7 +83,6 @@ function App() {
       return;
     }
 
-    // MessageBubble expects role + content
     const userMessage = {
       id: Date.now(),
       role: 'user',
@@ -67,19 +96,41 @@ function App() {
 
     try {
       const formData = new FormData();
-      formData.append('message', text);
+      // Backend expects "content" field (not "message")
+      formData.append('content', text);
       if (file) formData.append('file', file);
 
       let url;
       const options = { method: 'POST', body: formData };
+
       if (isGuest) {
         url = API_BASE_URL + '/guest/chat';
       } else {
-        url = API_BASE_URL + '/sessions/' + sessionId + '/messages';
+        // If no sessionId yet, create one inline
+        let sid = sessionId;
+        if (!sid) {
+          const createRes = await fetch(API_BASE_URL + '/sessions', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + token,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ title: text.slice(0, 50) }),
+          });
+          if (createRes.ok) {
+            const session = await createRes.json();
+            sid = session.id;
+            setSessionId(sid);
+          }
+        }
+        url = API_BASE_URL + '/sessions/' + sid + '/messages';
         options.headers = { Authorization: 'Bearer ' + token };
       }
 
       const response = await fetch(url, options);
+      if (!response.ok) {
+        throw new Error('Server responded with ' + response.status);
+      }
       const data = await response.json();
 
       if (data.response) {
@@ -88,7 +139,7 @@ function App() {
           id: Date.now() + 1,
           role: 'assistant',
           content: isEasterEgg
-            ? 'Ahoj Bado! ❤️ Jsem rád, že jsi tady! Tvoje vášeň pro bezpečnost mě inspiruje. Můžeme pokračovat s CTF?'
+            ? 'Ahoj Bado! ❤️ Jsem rád, že jsi tady! Tvoje vášeň pro bezpečnost mě inspiruje.'
             : data.response,
           timestamp: new Date(),
         }]);
@@ -98,7 +149,7 @@ function App() {
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         role: 'assistant',
-        content: 'Omlouváme se, došlo k chybě. Zkuste to prosím znovu.',
+        content: 'Chyba při odeslání zprávy: ' + error.message + '. Zkuste obnovit stránku.',
         timestamp: new Date(),
       }]);
     } finally {
@@ -107,6 +158,28 @@ function App() {
   };
 
   const handleQuickPrompt = (text) => handleSendMessage(text, null);
+
+  const handleNewChat = async () => {
+    setMessages([]);
+    if (!isGuest && token) {
+      try {
+        const createRes = await fetch(API_BASE_URL + '/sessions', {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer ' + token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ title: 'Nový chat' }),
+        });
+        if (createRes.ok) {
+          const session = await createRes.json();
+          setSessionId(session.id);
+        }
+      } catch (err) {
+        console.error('New session error:', err);
+      }
+    }
+  };
 
   return (
     <div className="app-layout">
@@ -139,7 +212,7 @@ function App() {
                 Přihlásit se
               </button>
             ) : (
-              <button className="header-new-chat-btn" onClick={() => setMessages([])}>
+              <button className="header-new-chat-btn" onClick={handleNewChat}>
                 + Nový chat
               </button>
             )}
