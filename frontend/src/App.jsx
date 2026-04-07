@@ -52,20 +52,24 @@ function App() {
       setShowLoginModal(true);
       return;
     }
+
+    // MessageBubble expects role + content
     const userMessage = {
       id: Date.now(),
-      text,
-      sender: 'user',
+      role: 'user',
+      content: text,
       timestamp: new Date(),
       file: file ? { name: file.name, type: file.type } : null,
     };
     setMessages(prev => [...prev, userMessage]);
     if (isGuest) setGuestMessageCount(prev => prev + 1);
     setIsLoading(true);
+
     try {
       const formData = new FormData();
       formData.append('message', text);
       if (file) formData.append('file', file);
+
       let url;
       const options = { method: 'POST', body: formData };
       if (isGuest) {
@@ -74,14 +78,18 @@ function App() {
         url = API_BASE_URL + '/sessions/' + sessionId + '/messages';
         options.headers = { Authorization: 'Bearer ' + token };
       }
+
       const response = await fetch(url, options);
       const data = await response.json();
+
       if (data.response) {
         const isEasterEgg = text.toLowerCase().includes('bador') && text.toLowerCase().includes('love');
         setMessages(prev => [...prev, {
           id: Date.now() + 1,
-          text: isEasterEgg ? 'Ahoj Bado! Jsem rad, ze jsi tady!' : data.response,
-          sender: 'bot',
+          role: 'assistant',
+          content: isEasterEgg
+            ? 'Ahoj Bado! ❤️ Jsem rád, že jsi tady! Tvoje vášeň pro bezpečnost mě inspiruje. Můžeme pokračovat s CTF?'
+            : data.response,
           timestamp: new Date(),
         }]);
       }
@@ -89,8 +97,8 @@ function App() {
       console.error('Error:', error);
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
-        text: 'Omlouváme se, došlo k chybě. Zkuste to prosím znovu.',
-        sender: 'bot',
+        role: 'assistant',
+        content: 'Omlouváme se, došlo k chybě. Zkuste to prosím znovu.',
         timestamp: new Date(),
       }]);
     } finally {

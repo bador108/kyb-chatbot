@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useContext, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import './HistorySidebar.css';
-import { AuthContext } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export default function HistorySidebar({ onClose }) {
-  const { isGuest, setIsGuest } = useContext(AuthContext);
+  const { isGuest, user, token, logout } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFolders, setExpandedFolders] = useState({
@@ -23,24 +23,24 @@ export default function HistorySidebar({ onClose }) {
   ];
 
   useEffect(() => {
-    if (isGuest) return;
+    if (isGuest || !token) return;
     const fetchSessions = async () => {
       try {
-        const accessToken = localStorage.getItem('accessToken');
-        const res = await fetch(`${API_BASE_URL}/sessions`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
+        const res = await fetch(API_BASE_URL + '/sessions', {
+          headers: { Authorization: 'Bearer ' + token },
         });
-        const data = await res.json();
-        setSessions(data);
+        if (res.ok) {
+          const data = await res.json();
+          setSessions(data);
+        }
       } catch (error) {
         console.error('Error fetching sessions:', error);
       }
     };
     fetchSessions();
-
     const saved = localStorage.getItem('folderAssignments');
     if (saved) setFolderAssignments(JSON.parse(saved));
-  }, [isGuest]);
+  }, [isGuest, token]);
 
   useEffect(() => {
     localStorage.setItem('folderAssignments', JSON.stringify(folderAssignments));
@@ -68,18 +68,16 @@ export default function HistorySidebar({ onClose }) {
     if (date.toDateString() === today.toDateString()) return 'Dnes';
     if (date.toDateString() === yesterday.toDateString()) return 'Včera';
     if (today.getTime() - date.getTime() < 7 * 24 * 60 * 60 * 1000) {
-      const days = ['Ne', 'Po', 'Út', 'St', 'Čt', 'Pá', 'So'];
-      return days[date.getDay()];
+      return ['Ne','Po','Út','St','Čt','Pá','So'][date.getDay()];
     }
-    return `${date.getDate()}.${date.getMonth() + 1}.`;
+    return date.getDate() + '.' + (date.getMonth() + 1) + '.';
   };
 
   const handleDeleteSession = async (sessionId) => {
     try {
-      const accessToken = localStorage.getItem('accessToken');
-      await fetch(`${API_BASE_URL}/sessions/${sessionId}`, {
+      await fetch(API_BASE_URL + '/sessions/' + sessionId, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: 'Bearer ' + token },
       });
       setSessions(prev => prev.filter(s => s.id !== sessionId));
     } catch (error) {
@@ -87,16 +85,16 @@ export default function HistorySidebar({ onClose }) {
     }
   };
 
-  const filteredSessions = sessions.filter(session =>
-    session.title.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredSessions = sessions.filter(s =>
+    s.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const groupedSessions = {
-    work:           filteredSessions.filter(s => folderAssignments[s.id] === 'work'),
-    life:           filteredSessions.filter(s => folderAssignments[s.id] === 'life'),
-    projects:       filteredSessions.filter(s => folderAssignments[s.id] === 'projects'),
-    clients:        filteredSessions.filter(s => folderAssignments[s.id] === 'clients'),
-    uncategorized:  filteredSessions.filter(s => !folderAssignments[s.id]),
+    work:          filteredSessions.filter(s => folderAssignments[s.id] === 'work'),
+    life:          filteredSessions.filter(s => folderAssignments[s.id] === 'life'),
+    projects:      filteredSessions.filter(s => folderAssignments[s.id] === 'projects'),
+    clients:       filteredSessions.filter(s => folderAssignments[s.id] === 'clients'),
+    uncategorized: filteredSessions.filter(s => !folderAssignments[s.id]),
   };
 
   const SessionItem = ({ session }) => (
@@ -136,10 +134,7 @@ export default function HistorySidebar({ onClose }) {
         <button
           className="session-delete-btn"
           title="Smazat"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDeleteSession(session.id);
-          }}
+          onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id); }}
         >
           🗑
         </button>
@@ -147,10 +142,10 @@ export default function HistorySidebar({ onClose }) {
     </div>
   );
 
-  const handleLogout = () => {
-    localStorage.clear();
-    window.location.href = '/';
-  };
+  // User display helpers
+  const displayName = user?.name || user?.email?.split('@')[0] || 'Uživatel';
+  const displayEmail = user?.email || '';
+  const avatarLetter = displayName.charAt(0).toUpperCase();
 
   return (
     <div className="sidebar">
@@ -159,17 +154,12 @@ export default function HistorySidebar({ onClose }) {
           <div className="sidebar-logo-icon">🤖</div>
           <span>CyberBot</span>
         </div>
-        <button className="sidebar-close-btn" onClick={onClose} aria-label="Zavřít menu">
-          ✕
-        </button>
+        <button className="sidebar-close-btn" onClick={onClose} aria-label="Zavřít">✕</button>
       </div>
 
       {isGuest ? (
         <>
-          <button
-            className="new-chat-btn"
-            onClick={() => window.location.reload()}
-          >
+          <button className="new-chat-btn" onClick={() => window.location.reload()}>
             + Nový chat
           </button>
           <div className="sidebar-guest-prompt">
@@ -184,10 +174,7 @@ export default function HistorySidebar({ onClose }) {
         </>
       ) : (
         <>
-          <button
-            className="new-chat-btn"
-            onClick={() => window.location.href = '/'}
-          >
+          <button className="new-chat-btn" onClick={() => window.location.href = '/'}>
             + Nový chat
           </button>
 
@@ -225,9 +212,7 @@ export default function HistorySidebar({ onClose }) {
             {groupedSessions.uncategorized.length > 0 && (
               <div className="folder-item">
                 <div className="folder-header">
-                  <div className="folder-header-content">
-                    <span>📌 Ostatní</span>
-                  </div>
+                  <div className="folder-header-content"><span>📌 Ostatní</span></div>
                   <div className="folder-count">{groupedSessions.uncategorized.length}</div>
                 </div>
                 <div className="sessions-list">
@@ -240,14 +225,12 @@ export default function HistorySidebar({ onClose }) {
           </div>
 
           <div className="sidebar-footer">
-            <div className="user-avatar">U</div>
+            <div className="user-avatar">{avatarLetter}</div>
             <div className="user-info">
-              <div className="user-name">Uživatel</div>
-              <div className="user-email">—</div>
+              <div className="user-name">{displayName}</div>
+              {displayEmail && <div className="user-email">{displayEmail}</div>}
             </div>
-            <button className="user-logout-btn" onClick={handleLogout} title="Odhlásit se">
-              🚪
-            </button>
+            <button className="user-logout-btn" onClick={logout} title="Odhlásit se">🚪</button>
           </div>
         </>
       )}

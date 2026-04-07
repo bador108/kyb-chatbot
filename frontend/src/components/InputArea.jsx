@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useContext } from 'react';
+import React, { useEffect, useRef } from 'react';
 import './InputArea.css';
-import { AuthContext } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 const ACCEPTED_FORMATS = ['.py', '.js', '.php', '.sql', '.txt', '.md', '.json', '.xml', '.png', '.jpg', '.gif', '.webp'];
 
@@ -9,7 +9,7 @@ export default function InputArea({ onSendMessage, isLoading, remainingMessages,
   const [file, setFile] = React.useState(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
-  const { isGuest } = useContext(AuthContext);
+  const { isGuest } = useAuth();
 
   const maxGuestMessages = 10;
   const isGuestBlocked = isGuest && remainingMessages <= 0;
@@ -34,17 +34,15 @@ export default function InputArea({ onSendMessage, isLoading, remainingMessages,
       onSendMessage(message, file);
       setMessage('');
       setFile(null);
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
-      }
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
     }
   };
 
   const handleFileSelect = (e) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      const fileExtension = '.' + selectedFile.name.split('.').pop().toLowerCase();
-      if (ACCEPTED_FORMATS.includes(fileExtension)) {
+      const ext = '.' + selectedFile.name.split('.').pop().toLowerCase();
+      if (ACCEPTED_FORMATS.includes(ext)) {
         setFile(selectedFile);
       } else {
         alert('Nepodporovaný formát souboru');
@@ -59,10 +57,7 @@ export default function InputArea({ onSendMessage, isLoading, remainingMessages,
       for (let item of items) {
         if (item.kind === 'file') {
           const f = item.getAsFile();
-          if (f && f.type.startsWith('image/')) {
-            setFile(f);
-            break;
-          }
+          if (f && f.type.startsWith('image/')) { setFile(f); break; }
         }
       }
     }
@@ -70,12 +65,8 @@ export default function InputArea({ onSendMessage, isLoading, remainingMessages,
 
   const getFileIcon = (fileName) => {
     const ext = fileName.split('.').pop().toLowerCase();
-    const iconMap = {
-      py: '🐍', js: '⚙️', php: '🐘', sql: '📊',
-      txt: '📄', md: '📝', json: '{}', xml: '<>',
-      png: '🖼️', jpg: '🖼️', gif: '🎬', webp: '🖼️',
-    };
-    return iconMap[ext] || '📎';
+    return { py:'🐍', js:'⚙️', php:'🐘', sql:'📊', txt:'📄', md:'📝', json:'{}', xml:'<>',
+             png:'🖼️', jpg:'🖼️', gif:'🎬', webp:'🖼️' }[ext] || '📎';
   };
 
   const formatFileSize = (bytes) => {
@@ -104,8 +95,7 @@ export default function InputArea({ onSendMessage, isLoading, remainingMessages,
           <button className="file-preview-remove" onClick={() => setFile(null)}>✕</button>
         </div>
       )}
-
-      <div className={`input-box${isGuestBlocked || isLoading ? ' disabled' : ''}`}>
+      <div className={'input-box' + (isGuestBlocked || isLoading ? ' disabled' : '')}>
         <button
           className="upload-btn"
           onClick={() => fileInputRef.current?.click()}
@@ -141,7 +131,6 @@ export default function InputArea({ onSendMessage, isLoading, remainingMessages,
           {isLoading ? '…' : '↑'}
         </button>
       </div>
-
       {isGuest && !isGuestBlocked && (
         <div className="input-hint">
           Zbývá {remainingMessages}/{maxGuestMessages} zpráv ·{' '}
